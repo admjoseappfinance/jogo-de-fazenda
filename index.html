@@ -911,7 +911,7 @@
         category: 'maquinario',
         price: 48000,
         rentPerHarvest: 5500,
-        desc: 'Permite transformar sacas de Milho em Silagem (1 sc milho = 180 kg silagem) para engorda e leite.',
+        desc: 'Permite transformar sacas de Milho em Silagem (1 sc milho = 180 kg silagem) para engorda, leite e ovinos.',
         discountKey: 'silage'
       },
       {
@@ -946,11 +946,11 @@
       },
       {
         id: 'caminhao_boiadeiro',
-        name: 'Caminhão Boiadeiro (Transporte de Gado)',
+        name: 'Caminhão Boiadeiro (Transporte de Animais)',
         category: 'caminhao',
         price: 145000,
         rentPerHarvest: 12000,
-        desc: 'Reduz frete de venda de gado vivo/açougue de R$ 95/cab para R$ 22/cab.',
+        desc: 'Reduz frete de venda de gado, ovelhas e suínos.',
         discountKey: 'cattle_freight'
       },
       {
@@ -1028,6 +1028,7 @@
     const SILAGE_KG_PER_CORN_SACK = 180;
     const SILAGE_PROCESS_COST_PER_SACK = 18;
     const MILK_PRICE_PER_LITER = 2.45;
+    const WOOL_PRICE_PER_KG = 24;
     const LIVE_CATTLE_PRICE_PER_ARROBA = 285;
     const BUTCHER_PRICE_PER_ARROBA = 310;
 
@@ -1035,6 +1036,8 @@
       boi: {
         id: 'boi',
         name: 'Boi de Corte (Bezerro/Novilho)',
+        shortLabel: '🐂 Boi',
+        uaWeight: 0.65,
         buyPrice: 2350,
         startArrobas: 7.5,
         maxArrobas: 21.0,
@@ -1042,11 +1045,16 @@
         gainSilageBonus: 0.55,
         silageKgPerMonth: 180,
         milkLitersMonth: 0,
-        minButcherArrobas: 16.5
+        woolKgMonth: 0,
+        minButcherArrobas: 16.5,
+        freightBase: 95,
+        freightOwn: 22
       },
       vaca: {
         id: 'vaca',
         name: 'Vaca Leiteira / Matriz (Holandesa/Jersey)',
+        shortLabel: '🐄 Vaca',
+        uaWeight: 1.0,
         buyPrice: 4600,
         startArrobas: 13.0,
         maxArrobas: 17.5,
@@ -1054,12 +1062,50 @@
         gainSilageBonus: 0.20,
         silageKgPerMonth: 220,
         milkLitersMonth: 480,
-        minButcherArrobas: 14.0
+        woolKgMonth: 0,
+        minButcherArrobas: 14.0,
+        freightBase: 95,
+        freightOwn: 22
+      },
+      ovelha: {
+        id: 'ovelha',
+        name: 'Ovelha / Carneiro (Lã & Corte)',
+        shortLabel: '🐑 Ovelha',
+        uaWeight: 0.18,
+        buyPrice: 620,
+        startArrobas: 2.2,
+        maxArrobas: 4.2,
+        gainBaseMonth: 0.16,
+        gainSilageBonus: 0.12,
+        silageKgPerMonth: 35,
+        milkLitersMonth: 0,
+        woolKgMonth: 0.45,
+        minButcherArrobas: 3.2,
+        freightBase: 25,
+        freightOwn: 8
+      },
+      porco: {
+        id: 'porco',
+        name: 'Porco / Suíno (Engorda Rápida)',
+        shortLabel: '🐷 Porco',
+        uaWeight: 0.25,
+        buyPrice: 780,
+        startArrobas: 2.8,
+        maxArrobas: 7.5,
+        gainBaseMonth: 0.42,
+        gainSilageBonus: 0.35,
+        silageKgPerMonth: 55,
+        milkLitersMonth: 0,
+        woolKgMonth: 0,
+        minButcherArrobas: 5.5,
+        freightBase: 32,
+        freightOwn: 10
       }
     };
 
     function getAnimalUA(animal) {
-      return Math.max(0.35, +(animal.arrobas / 15).toFixed(2));
+      const spec = LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES.boi;
+      return Math.max(0.12, +(spec.uaWeight * Math.max(0.5, animal.arrobas / (spec.startArrobas || 5))).toFixed(2));
     }
 
     function getTotalHerdUA() {
@@ -1545,6 +1591,7 @@
         silo: { soja: 0, milho: 0, trigo: 0, canola: 0, sorgo: 0, aveia: 0 },
         silageKg: 0,
         milkLiters: 0,
+        woolKg: 0,
         machineWear: 12,
         activeContract: null,
         availableContracts: generateAvailableContracts(hectares, 0),
@@ -2449,12 +2496,20 @@
           const rowSlot = Math.floor(slot / 4) % 4;
           const ax = pHa.hc * HA_PX + 42 + colSlot * 56;
           const ay = pHa.hr * HA_PX + 52 + rowSlot * 52;
-          const isCalf = (animal.ageMonths || 0) < 8 || animal.arrobas < 6;
+          const isSmall = animal.type === 'ovelha' || animal.type === 'porco' || (animal.ageMonths || 0) < 8 || animal.arrobas < 5;
 
           ctx.save();
           ctx.translate(ax, ay);
-          if (isCalf) ctx.scale(0.72, 0.72);
-          ctx.fillStyle = animal.type === 'vaca' ? '#f7f5f0' : '#8c4a27';
+          if (isSmall) ctx.scale(0.68, 0.68);
+          if (animal.type === 'ovelha') {
+            ctx.fillStyle = '#f2efe9';
+          } else if (animal.type === 'porco') {
+            ctx.fillStyle = '#f29cb5';
+          } else if (animal.type === 'vaca') {
+            ctx.fillStyle = '#f7f5f0';
+          } else {
+            ctx.fillStyle = '#8c4a27';
+          }
           ctx.strokeStyle = '#2b180a';
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -2469,7 +2524,7 @@
             ctx.arc(4, 2, 2.8, 0, Math.PI * 2);
             ctx.fill();
           }
-          ctx.fillStyle = animal.type === 'vaca' ? '#ebe6dc' : '#6e371a';
+          ctx.fillStyle = animal.type === 'porco' ? '#e37d9b' : (animal.type === 'vaca' || animal.type === 'ovelha' ? '#ebe6dc' : '#6e371a');
           ctx.beginPath();
           ctx.arc(13, -3, 5, 0, Math.PI * 2);
           ctx.fill();
@@ -2688,11 +2743,12 @@
         const totalUA = getTotalHerdUA();
         const activeAreaHa = activeMembers.length;
         const activeCapacityUA = activeAreaHa * UA_CAPACITY_PER_HA;
+        const hasActivePasture = activeAreaHa > 0;
 
         let totalSilageNeeded = 0;
         state.cattle.forEach(a => {
           const spec = LIVESTOCK_TYPES[a.type] || LIVESTOCK_TYPES.boi;
-          totalSilageNeeded += spec.silageKgPerMonth * (getAnimalUA(a) / 0.85);
+          totalSilageNeeded += spec.silageKgPerMonth * (getAnimalUA(a) / Math.max(0.15, spec.uaWeight || 0.65));
         });
 
         let silageCoverage = 0;
@@ -2702,8 +2758,8 @@
           silageCoverage = Math.min(1, usedKg / totalSilageNeeded);
         }
 
-        let pastureQualityMult = 0.35;
-        if (activeAreaHa > 0) {
+        let pastureQualityMult = 0;
+        if (hasActivePasture) {
           const effectiveUAOnPasture = totalUA * (1 - silageCoverage * 0.80);
           const loadRatio = effectiveUAOnPasture / Math.max(0.5, activeCapacityUA);
           const drainPct = Math.max(4, Math.round(18 * loadRatio));
@@ -2725,20 +2781,33 @@
           if (activeMembers.some(m => m.pastureDegraded)) {
             showToast('⚠️ Pasto acabou! Revezar para outro piquete (3 meses p/ rebrotar).');
           }
-        } else if (silageCoverage > 0.5) {
+        } else if (silageCoverage >= 0.6) {
           pastureQualityMult = 0.85;
         }
 
+        const canSustainHerd = hasActivePasture || silageCoverage >= 0.6;
+
         let milkProducedNow = 0;
+        let woolProducedNow = 0;
         const newbornCalves = [];
         const adultBullsCount = state.cattle.filter(a => a.type === 'boi' && (a.ageMonths || 14) >= 14).length;
 
         state.cattle.forEach((animal) => {
           const spec = LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES.boi;
+          animal.ageMonths = (animal.ageMonths || 12) + 1;
+
+          if (!canSustainHerd) {
+            animal.arrobas = Math.max(spec.startArrobas, +(animal.arrobas - 0.2).toFixed(2));
+            return;
+          }
+
           const fedSilage = silageCoverage >= 0.5;
           const gain = (spec.gainBaseMonth + (fedSilage ? spec.gainSilageBonus * silageCoverage : 0)) * pastureQualityMult;
           animal.arrobas = +Math.min(spec.maxArrobas, animal.arrobas + gain).toFixed(2);
-          animal.ageMonths = (animal.ageMonths || 12) + 1;
+
+          if (spec.woolKgMonth > 0 && (animal.ageMonths || 12) >= 6) {
+            woolProducedNow += spec.woolKgMonth * (0.7 + 0.3 * pastureQualityMult);
+          }
 
           if (animal.type === 'vaca') {
             const milkMult = (1 + 0.35 * silageCoverage) * pastureQualityMult;
@@ -2775,6 +2844,10 @@
           }
         });
 
+        if (!canSustainHerd) {
+          showToast('⚠️ Rebanho sem pasto ativo e sem silagem suficiente: produção pausada e sem ganho de peso.');
+        }
+
         if (newbornCalves.length > 0) {
           state.cattle.push(...newbornCalves);
           showToast(`🐮 Nasceu ${newbornCalves.length} bezerro(s) no rebanho!`);
@@ -2782,6 +2855,10 @@
 
         if (milkProducedNow > 0) {
           state.milkLiters = +((state.milkLiters || 0) + milkProducedNow).toFixed(1);
+        }
+
+        if (woolProducedNow > 0) {
+          state.woolKg = +((state.woolKg || 0) + woolProducedNow).toFixed(2);
         }
       }
 
@@ -2849,7 +2926,7 @@
         body.innerHTML = `
           <p><strong>1. Tempo Real por Hectare:</strong> Arar leva <strong>6 min/ha</strong>, Plantar <strong>10 min/ha</strong>, Cuidar <strong>10 min/ha</strong> e Colher <strong>8 min/ha</strong> (proporcional à área selecionada, rodando em segundo plano sem travar o mapa).</p>
           <p><strong>2. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
-          <p><strong>3. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por 2 colheitas (cobrado na colheita) ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
+          <p><strong>3. Pecuária Variada:</strong> Crie <strong>Boi/Touro</strong>, <strong>Vaca</strong> (leite), <strong>Ovelha</strong> (lã e corte) e <strong>Porco</strong> (engorda rápida), com revezamento de pastos e uso de silagem.</p>
           <p><strong>4. Contratos Estilo Farming Simulator:</strong> Em <strong>💾</strong> você aceita serviços em talhões vizinhos (arar, semear, pulverizar ou colher). O terreno é liberado no mapa para você trabalhar e paga quando atingir 100%.</p>
           <p><strong>5. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
         `;
@@ -3078,20 +3155,20 @@
         const totalHerdUA = getTotalHerdUA();
         const cattleList = state.cattle || [];
         const hasSilageMaker = ownsItem('ensiladeira_forragem');
-        const cattleFreight = ownsItem('caminhao_boiadeiro') ? 22 : 95;
+        const hasAnimalTruck = ownsItem('caminhao_boiadeiro');
         const milkFreight = ownsItem('caminhao_leite') ? 0.08 : 0.32;
         const netMilkPrice = +(MILK_PRICE_PER_LITER - milkFreight).toFixed(2);
 
         body.innerHTML = `
           <div class="confirm-summary-big" style="margin-bottom:10px;">
             <div class="summary-box"><span>Lotação Real (Pasto Ativo)</span><strong>${totalHerdUA.toFixed(1)} / ${activeCapUA.toFixed(1)} UA (${cattleList.length} cab)</strong></div>
-            <div class="summary-box"><span>Silagem / Tanque de Leite</span><strong>${(state.silageKg || 0).toFixed(0)} kg · ${(state.milkLiters || 0).toFixed(0)} L</strong></div>
+            <div class="summary-box"><span>Silagem / Leite / Lã</span><strong>${(state.silageKg || 0).toFixed(0)} kg · ${(state.milkLiters || 0).toFixed(0)} L · ${(state.woolKg || 0).toFixed(1)} kg</strong></div>
           </div>
 
           <h4 style="margin:8px 0 6px;">1. Revezamento de Piquetes & Junção Opcional</h4>
-          <p class="confirm-sub">Capacidade real: <strong>${UA_CAPACITY_PER_HA} UA/ha</strong> (1 UA = 15@ / 450kg · ~2 a 3 adultos/ha). Cada hectare cercado é um pasto separado; você pode <strong>juntar com um pasto vizinho</strong> se quiser um pasto maior, ou revezar movendo os animais entre eles (3 meses sem animais para rebrotar).</p>
+          <p class="confirm-sub">Capacidade real: <strong>${UA_CAPACITY_PER_HA} UA/ha</strong> (1 UA = 15@ / 450kg · ~2 a 3 adultos/ha). Cada hectare cercado é um pasto separado; você pode <strong>juntar com um pasto vizinho</strong> se quiser um pasto maior, ou revezar movendo os animais entre eles (3 meses sem animais para rebrotar). Sem pasto ativo e sem silagem suficiente, os animais param de produzir e não ganham peso.</p>
           ${paddocks.length === 0
-            ? `<p class="confirm-sub">Nenhum pasto cercado ainda. Cerque ao menos 2 hectares abaixo para revezar.</p>`
+            ? `<p class="confirm-sub">Nenhum pasto cercado ainda. Cerque ao menos 1 hectare abaixo para iniciar a criação.</p>`
             : paddocks.map((p, idx) => {
                 const coordsLabel = p.members.map(m => `(${m.hc + 1},${m.hr + 1})`).join(' + ');
                 const statusBadge = p.isDegraded
@@ -3182,13 +3259,16 @@
             </div>
           </div>
 
-          <h4 style="margin:10px 0 6px;">4. Leite Ordenhado (Venda à Cooperativa)</h4>
+          <h4 style="margin:10px 0 6px;">4. Leite Ordenhado & Lã de Ovelha</h4>
           <div class="machine-card">
             <div class="machine-info">
-              <strong>Tanque: ${(state.milkLiters || 0).toFixed(1)} Litros</strong>
-              <small>Preço base ${formatBRL(MILK_PRICE_PER_LITER)}/L − Frete ${formatBRL(milkFreight)}/L = <strong>R$ ${netMilkPrice.toFixed(2)}/L líquido</strong></small>
+              <strong>Tanque: ${(state.milkLiters || 0).toFixed(1)} L · Lã: ${(state.woolKg || 0).toFixed(2)} kg</strong>
+              <small>Leite: <strong>R$ ${netMilkPrice.toFixed(2)}/L líquido</strong> · Lã: <strong>${formatBRL(WOOL_PRICE_PER_KG)}/kg</strong></small>
             </div>
-            <button class="action-btn" onclick="sellAllMilk()">Vender Leite</button>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="action-btn" onclick="sellAllMilk()">Vender Leite</button>
+              <button class="action-btn gold" onclick="sellAllWool()">Vender Lã</button>
+            </div>
           </div>
 
           <h4 style="margin:10px 0 6px;">5. Comprar Animais & Reprodução Natural</h4>
@@ -3196,25 +3276,28 @@
           <div class="field-row">
             <button class="action-btn" onclick="buyAnimal('boi')">+ Boi / Touro (${formatBRL(LIVESTOCK_TYPES.boi.buyPrice)} · 7.5@)</button>
             <button class="action-btn gold" onclick="buyAnimal('vaca')">+ Vaca Matriz/Leiteira (${formatBRL(LIVESTOCK_TYPES.vaca.buyPrice)} · 13@)</button>
+            <button class="action-btn" onclick="buyAnimal('ovelha')">+ Ovelha (${formatBRL(LIVESTOCK_TYPES.ovelha.buyPrice)} · 2.2@ · Lã)</button>
+            <button class="action-btn gold" onclick="buyAnimal('porco')">+ Porco (${formatBRL(LIVESTOCK_TYPES.porco.buyPrice)} · 2.8@)</button>
           </div>
 
           <h4 style="margin:10px 0 6px;">6. Rebanho Ativo (Venda Vivo ou Açougue)</h4>
-          <p class="confirm-sub">Frete: <strong>${formatBRL(cattleFreight)}/cab</strong> · Vivo Criação: <strong>${formatBRL(LIVE_CATTLE_PRICE_PER_ARROBA)}/@</strong> · Açougue (mín. 16.5@ boi / 14@ vaca): <strong>${formatBRL(BUTCHER_PRICE_PER_ARROBA)}/@</strong>.</p>
+          <p class="confirm-sub">Vivo Criação: <strong>${formatBRL(LIVE_CATTLE_PRICE_PER_ARROBA)}/@</strong> · Açougue: <strong>${formatBRL(BUTCHER_PRICE_PER_ARROBA)}/@</strong>${hasAnimalTruck ? ' · Caminhão Boiadeiro ativo (frete reduzido)' : ''}.</p>
           ${cattleList.length === 0
             ? `<p class="confirm-sub">Nenhum animal no pasto ainda.</p>`
             : cattleList.map((a, i) => {
                 const spec = LIVESTOCK_TYPES[a.type] || LIVESTOCK_TYPES.boi;
-                const liveVal = Math.max(0, Math.round(a.arrobas * LIVE_CATTLE_PRICE_PER_ARROBA - cattleFreight));
-                const butcherVal = Math.max(0, Math.round(a.arrobas * BUTCHER_PRICE_PER_ARROBA - cattleFreight));
+                const freight = hasAnimalTruck ? spec.freightOwn : spec.freightBase;
+                const liveVal = Math.max(0, Math.round(a.arrobas * LIVE_CATTLE_PRICE_PER_ARROBA - freight));
+                const butcherVal = Math.max(0, Math.round(a.arrobas * BUTCHER_PRICE_PER_ARROBA - freight));
                 const readyButcher = a.arrobas >= spec.minButcherArrobas;
                 const ageTxt = `${a.ageMonths ?? 14}m`;
                 const pregTxt = (a.type === 'vaca' && a.pregnantMonths > 0) ? ` · 🤰 Prenha (${a.pregnantMonths}/9m)` : '';
-                const calfTxt = (a.ageMonths || 0) < 8 ? ' (Bezerro)' : '';
+                const calfTxt = ((a.type === 'boi' || a.type === 'vaca') && (a.ageMonths || 0) < 8) ? ' (Bezerro)' : '';
                 return `
                   <div class="machine-card">
                     <div class="machine-info">
-                      <strong>#${i + 1} ${a.type === 'vaca' ? '🐄 Vaca' : '🐂 Boi'}${calfTxt} — ${a.arrobas.toFixed(2)} @ (${ageTxt})</strong>
-                      <small>${a.type === 'vaca' ? `Leite após 20m${pregTxt}` : `Meta açougue: ${spec.minButcherArrobas}@ (máx ${spec.maxArrobas}@)`}</small>
+                      <strong>#${i + 1} ${spec.shortLabel}${calfTxt} — ${a.arrobas.toFixed(2)} @ (${ageTxt})</strong>
+                      <small>${a.type === 'vaca' ? `Leite após 20m${pregTxt}` : (a.type === 'ovelha' ? `Produz lã/mês · Açougue ≥ ${spec.minButcherArrobas}@` : `Meta açougue: ${spec.minButcherArrobas}@ (máx ${spec.maxArrobas}@)`)}</small>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:4px;">
                       <button class="action-btn secondary" onclick="sellAnimal(${a.id}, 'live')">Vender Vivo (${formatBRL(liveVal)})</button>
@@ -3583,6 +3666,7 @@
       }
       state = JSON.parse(raw);
       if (!Array.isArray(state.activeTasks)) state.activeTasks = [];
+      if (typeof state.woolKg !== 'number') state.woolKg = 0;
       clearSelection();
       updateHUD();
       renderWorld();
@@ -3609,7 +3693,7 @@
       document.getElementById('hudSiloChip').textContent = `🌾 Silo: ${totalSacks.toFixed(1)} sc`;
       const cattleChip = document.getElementById('hudLivestockChip');
       if (cattleChip) {
-        cattleChip.textContent = `🐄 Gado: ${(state.cattle || []).length}`;
+        cattleChip.textContent = `🐄 Rebanho: ${(state.cattle || []).length}`;
       }
 
       let hasRipe = false;
@@ -3727,7 +3811,7 @@
       if (!ha || !ha.owned || !ha.isPasture) return;
       const pastureCount = state.hectares.filter(h => h.owned && h.isPasture).length;
       if (pastureCount <= 1 && (state.cattle || []).length > 0) {
-        showToast('Venda ou transfira o gado antes de remover o último pasto.');
+        showToast('Venda ou transfira os animais antes de remover o último pasto.');
         return;
       }
       const wasActive = ha.pastureActive;
@@ -3777,13 +3861,14 @@
       if (!spec) return;
       const paddocks = getPasturePaddocks();
       if (paddocks.length === 0) {
-        showToast('Cerque pelo menos 1 hectare de pasto antes de comprar gado.');
+        showToast('Cerque pelo menos 1 hectare de pasto antes de comprar animais.');
         return;
       }
       ensureAtLeastOneActivePaddock();
       const totalPastureHa = state.hectares.filter(h => h.owned && h.isPasture).length;
       const maxUAWithSilage = totalPastureHa * UA_CAPACITY_PER_HA * ((state.silageKg || 0) >= 300 ? 1.8 : 1.0);
-      const nextUA = getTotalHerdUA() + (spec.startArrobas / 15);
+      const addedUA = Math.max(0.12, +(spec.uaWeight * Math.max(0.5, spec.startArrobas / (spec.startArrobas || 5))).toFixed(2));
+      const nextUA = getTotalHerdUA() + addedUA;
       if (nextUA > maxUAWithSilage + 0.1) {
         showToast(`Lotação limite (${UA_CAPACITY_PER_HA} UA/ha)! Cerque mais pasto ou produza silagem.`);
         return;
@@ -3798,7 +3883,7 @@
         id: Date.now() + Math.random(),
         type: spec.id,
         arrobas: spec.startArrobas,
-        ageMonths: spec.id === 'vaca' ? 24 : 14,
+        ageMonths: spec.id === 'vaca' ? 24 : 12,
         pregnantMonths: 0,
         monthsSinceCalving: 12
       });
@@ -3818,7 +3903,7 @@
         return;
       }
       const pricePerArroba = mode === 'butcher' ? BUTCHER_PRICE_PER_ARROBA : LIVE_CATTLE_PRICE_PER_ARROBA;
-      const freight = ownsItem('caminhao_boiadeiro') ? 22 : 95;
+      const freight = ownsItem('caminhao_boiadeiro') ? spec.freightOwn : spec.freightBase;
       const net = Math.max(0, Math.round(animal.arrobas * pricePerArroba - freight));
 
       state.cattle.splice(idx, 1);
@@ -3841,6 +3926,20 @@
       state.money += net;
       updateHUD();
       showToast(`Vendeu ${liters.toFixed(0)} L de leite por ${formatBRL(net)} líquido!`);
+      openModal('livestock');
+    }
+
+    function sellAllWool() {
+      const kg = state.woolKg || 0;
+      if (kg < 0.5) {
+        showToast('Mínimo de 0.5 kg de lã para venda.');
+        return;
+      }
+      const net = Math.round(kg * WOOL_PRICE_PER_KG);
+      state.woolKg = 0;
+      state.money += net;
+      updateHUD();
+      showToast(`Vendeu ${kg.toFixed(2)} kg de lã por ${formatBRL(net)}!`);
       openModal('livestock');
     }
 
