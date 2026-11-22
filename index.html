@@ -1023,6 +1023,8 @@
     ];
 
     const FENCE_COST_HA = 3200;
+    const COOP_COST_HA = 2400;
+    const STY_COST_HA = 2800;
     const UA_CAPACITY_PER_HA = 2.2;
     const PASTURE_REGROWTH_MONTHS = 3;
     const SILAGE_KG_PER_CORN_SACK = 180;
@@ -1038,6 +1040,7 @@
         id: 'boi',
         name: 'Boi de Corte (Bezerro/Novilho)',
         shortLabel: '🐂 Boi',
+        facilityType: 'pasture',
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 0.65,
@@ -1058,6 +1061,7 @@
         id: 'vaca',
         name: 'Vaca Leiteira / Matriz (Holandesa/Jersey)',
         shortLabel: '🐄 Vaca',
+        facilityType: 'pasture',
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 1.0,
@@ -1078,6 +1082,7 @@
         id: 'ovelha',
         name: 'Ovelha / Carneiro (Lã & Corte)',
         shortLabel: '🐑 Ovelha',
+        facilityType: 'pasture',
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 0.18,
@@ -1096,8 +1101,9 @@
       },
       porco: {
         id: 'porco',
-        name: 'Porco / Suíno (Engorda c/ Grãos)',
+        name: 'Porco / Suíno (Chiqueiro c/ Grãos)',
         shortLabel: '🐷 Porco',
+        facilityType: 'sty',
         requiresGrain: true,
         grainSacksMonth: 1.2,
         uaWeight: 0.25,
@@ -1116,8 +1122,9 @@
       },
       galinha: {
         id: 'galinha',
-        name: 'Galinha Poedeira / Corte (Exige Grãos)',
+        name: 'Galinha Poedeira / Corte (Galinheiro c/ Grãos)',
         shortLabel: '🐔 Galinha',
+        facilityType: 'coop',
         requiresGrain: true,
         grainSacksMonth: 0.35,
         uaWeight: 0.05,
@@ -1135,6 +1142,36 @@
         freightOwn: 2
       }
     };
+
+    function getHectareFacilityType(ha) {
+      if (!ha || !ha.owned) return null;
+      if (ha.facilityType === 'coop' || ha.facilityType === 'sty' || ha.facilityType === 'pasture') {
+        return ha.facilityType;
+      }
+      if (ha.isPasture) return 'pasture';
+      return null;
+    }
+
+    function setHectareFacility(ha, type) {
+      ha.facilityType = type;
+      ha.isPasture = (type === 'pasture');
+      if (type !== 'pasture') {
+        ha.pastureActive = false;
+        ha.pastureDegraded = false;
+        ha.restMonths = 0;
+        ha.grassLevel = 100;
+      }
+    }
+
+    function getCoopCapacity() {
+      const coopHa = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'coop').length;
+      return coopHa * 45;
+    }
+
+    function getStyCapacity() {
+      const styHa = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'sty').length;
+      return styHa * 18;
+    }
 
     function getTotalGrainSacksInSilo() {
       if (!state || !state.silo) return 0;
@@ -1168,13 +1205,14 @@
     }
 
     function getTotalHerdUA() {
-      return +((state.cattle || []).reduce((sum, a) => sum + getAnimalUA(a), 0)).toFixed(2);
+      const grazing = (state.cattle || []).filter(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture');
+      return +grazing.reduce((sum, a) => sum + getAnimalUA(a), 0).toFixed(2);
     }
 
     function getPasturePaddocks() {
       const groups = new Map();
       state.hectares.forEach(h => {
-        if (!h.owned || !h.isPasture) return;
+        if (!h.owned || getHectareFacilityType(h) !== 'pasture') return;
         const gid = h.paddockGroupId != null ? h.paddockGroupId : h.id;
         if (!groups.has(gid)) groups.set(gid, []);
         groups.get(gid).push(h);
@@ -1208,7 +1246,8 @@
       const paddocks = getPasturePaddocks();
       if (paddocks.length === 0) return;
       const hasActive = paddocks.some(p => p.isActive && !p.isDegraded);
-      if (!hasActive && (state.cattle || []).length === 0) {
+      const hasGrazingAnimals = (state.cattle || []).some(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture');
+      if (!hasActive && !hasGrazingAnimals) {
         const ready = paddocks.find(p => !p.isDegraded);
         if (ready) {
           ready.members.forEach(m => {
@@ -1604,6 +1643,7 @@
             owned,
             price,
             isPasture: false,
+            facilityType: null,
             paddockGroupId: idx,
             grassLevel: 100,
             pastureActive: false,
@@ -1837,7 +1877,7 @@
           renderWorld();
           return;
         }
-        if (ha.owned && ha.isPasture) {
+        if (ha.owned && getHectareFacilityType(ha)) {
           selectedTileKeys.clear();
           selectedHaIdToBuy = null;
           openModal('livestock');
@@ -1859,7 +1899,7 @@
           const hc = Math.floor(tx / SUB_SIZE);
           const hr = Math.floor(ty / SUB_SIZE);
           const ha = state.hectares[hr * HA_COLS + hc];
-          if ((ha.owned && !ha.isPasture) || isContractHectare(ha.id)) {
+          if ((ha.owned && !getHectareFacilityType(ha)) || isContractHectare(ha.id)) {
             selectedTileKeys.add(`${tx},${ty}`);
           }
         }
@@ -2377,12 +2417,19 @@
           const ha = state.hectares[hr * HA_COLS + hc];
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
           const isContract = isContractHectare(ha.id);
+          const fac = getHectareFacilityType(ha);
 
           if (!ha.owned && !isContract) {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#4d7335' : '#466930';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
-          } else if (ha.owned && ha.isPasture) {
+          } else if (ha.owned && fac === 'pasture') {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#79ba47' : '#6ead3e';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          } else if (ha.owned && fac === 'coop') {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#c9a66b' : '#b89458';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          } else if (ha.owned && fac === 'sty') {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#9c7856' : '#8c6948';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'raw') {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#6bb33d' : '#63a837';
@@ -2454,8 +2501,9 @@
           const hx = hc * HA_PX;
           const hy = hr * HA_PX;
           const isContract = isContractHectare(ha.id);
+          const fac = getHectareFacilityType(ha);
 
-          if (ha.owned && ha.isPasture) {
+          if (ha.owned && fac === 'pasture') {
             const gLvl = typeof ha.grassLevel === 'number' ? ha.grassLevel : 100;
             if (ha.pastureDegraded || gLvl <= 15) {
               ctx.fillStyle = 'rgba(138, 102, 54, 0.58)';
@@ -2471,10 +2519,10 @@
             const leftHa = hc > 0 ? state.hectares[hr * HA_COLS + (hc - 1)] : null;
             const rightHa = hc < HA_COLS - 1 ? state.hectares[hr * HA_COLS + (hc + 1)] : null;
 
-            const topNeighbor = topHa?.owned && topHa?.isPasture && (topHa.paddockGroupId ?? topHa.id) === myGroup;
-            const botNeighbor = botHa?.owned && botHa?.isPasture && (botHa.paddockGroupId ?? botHa.id) === myGroup;
-            const leftNeighbor = leftHa?.owned && leftHa?.isPasture && (leftHa.paddockGroupId ?? leftHa.id) === myGroup;
-            const rightNeighbor = rightHa?.owned && rightHa?.isPasture && (rightHa.paddockGroupId ?? rightHa.id) === myGroup;
+            const topNeighbor = topHa?.owned && getHectareFacilityType(topHa) === 'pasture' && (topHa.paddockGroupId ?? topHa.id) === myGroup;
+            const botNeighbor = botHa?.owned && getHectareFacilityType(botHa) === 'pasture' && (botHa.paddockGroupId ?? botHa.id) === myGroup;
+            const leftNeighbor = leftHa?.owned && getHectareFacilityType(leftHa) === 'pasture' && (leftHa.paddockGroupId ?? leftHa.id) === myGroup;
+            const rightNeighbor = rightHa?.owned && getHectareFacilityType(rightHa) === 'pasture' && (rightHa.paddockGroupId ?? rightHa.id) === myGroup;
 
             ctx.strokeStyle = '#6b3e19';
             ctx.lineWidth = 4 / zoom;
@@ -2497,6 +2545,22 @@
               ctx.font = 'bold 10px system-ui, sans-serif';
               ctx.textAlign = 'left';
               ctx.fillText(statusTxt, hx + 13, hy + 21);
+            }
+          } else if (ha.owned && (fac === 'coop' || fac === 'sty')) {
+            ctx.strokeStyle = fac === 'coop' ? '#b45309' : '#7c2d12';
+            ctx.lineWidth = 4 / zoom;
+            ctx.strokeRect(hx + 2, hy + 2, HA_PX - 4, HA_PX - 4);
+
+            if (HA_PX * zoom >= 52) {
+              const label = fac === 'coop' ? '🐔 GALINHEIRO' : '🐷 CHIQUEIRO';
+              ctx.fillStyle = fac === 'coop' ? 'rgba(146, 64, 14, 0.9)' : 'rgba(124, 45, 18, 0.9)';
+              ctx.beginPath();
+              ctx.roundRect(hx + 8, hy + 8, 118, 20, 6);
+              ctx.fill();
+              ctx.fillStyle = '#fff8e7';
+              ctx.font = 'bold 10px system-ui, sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText(label, hx + 13, hy + 21);
             }
           } else {
             ctx.strokeStyle = isContract ? '#38bdf8' : (ha.owned ? '#ffe680' : 'rgba(255, 255, 255, 0.35)');
@@ -2544,14 +2608,23 @@
         }
       }
 
-      let activePastureHectares = state.hectares.filter(h => h.owned && h.isPasture && h.pastureActive !== false && !h.pastureDegraded);
+      let activePastureHectares = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture' && h.pastureActive !== false && !h.pastureDegraded);
       if (activePastureHectares.length === 0) {
-        activePastureHectares = state.hectares.filter(h => h.owned && h.isPasture);
+        activePastureHectares = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture');
       }
-      if (activePastureHectares.length > 0 && Array.isArray(state.cattle) && state.cattle.length > 0) {
+      const coopHectares = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'coop');
+      const styHectares = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'sty');
+
+      if (Array.isArray(state.cattle) && state.cattle.length > 0) {
         state.cattle.forEach((animal, idx) => {
-          const pHa = activePastureHectares[idx % activePastureHectares.length];
-          const slot = Math.floor(idx / activePastureHectares.length);
+          const facType = LIVESTOCK_TYPES[animal.type]?.facilityType || 'pasture';
+          let targetHectares = activePastureHectares;
+          if (facType === 'coop') targetHectares = coopHectares;
+          else if (facType === 'sty') targetHectares = styHectares;
+
+          if (!targetHectares || targetHectares.length === 0) return;
+          const pHa = targetHectares[idx % targetHectares.length];
+          const slot = Math.floor(idx / targetHectares.length);
           const colSlot = (slot % 4);
           const rowSlot = Math.floor(slot / 4) % 4;
           const ax = pHa.hc * HA_PX + 42 + colSlot * 56;
@@ -2790,7 +2863,7 @@
       const activeMemberIds = new Set(activeMembers.map(m => m.id));
 
       state.hectares.forEach(h => {
-        if (!h.owned || !h.isPasture) return;
+        if (!h.owned || getHectareFacilityType(h) !== 'pasture') return;
         if (!activeMemberIds.has(h.id)) {
           h.restMonths = (h.restMonths || 0) + 1;
           h.grassLevel = Math.min(100, (h.grassLevel ?? 100) + Math.ceil(100 / PASTURE_REGROWTH_MONTHS));
@@ -2802,7 +2875,7 @@
       });
 
       if (Array.isArray(state.cattle) && state.cattle.length > 0) {
-        const grazingAnimals = state.cattle.filter(a => !(LIVESTOCK_TYPES[a.type]?.requiresGrain));
+        const grazingAnimals = state.cattle.filter(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture');
         const grainAnimals = state.cattle.filter(a => Boolean(LIVESTOCK_TYPES[a.type]?.requiresGrain));
 
         const grazingUA = +grazingAnimals.reduce((sum, a) => sum + getAnimalUA(a), 0).toFixed(2);
@@ -3025,7 +3098,7 @@
         body.innerHTML = `
           <p><strong>1. Tempo Real por Hectare:</strong> Arar leva <strong>6 min/ha</strong>, Plantar <strong>10 min/ha</strong>, Cuidar <strong>10 min/ha</strong> e Colher <strong>8 min/ha</strong> (proporcional à área selecionada, rodando em segundo plano sem travar o mapa).</p>
           <p><strong>2. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
-          <p><strong>3. Pecuária Variada:</strong> Crie <strong>Boi/Touro</strong>, <strong>Vaca</strong> (leite), <strong>Ovelha</strong> (lã e corte), <strong>Porco</strong> (exige grãos) e <strong>Galinha</strong> (exige grãos e produz ovos), com revezamento de pastos e uso de silagem.</p>
+          <p><strong>3. Instalações & Criação Separada:</strong> Transforme hectares próprios em <strong>Pasto</strong> (bois, vacas, ovelhas), <strong>Galinheiro</strong> (galinhas, exigindo grãos e produzindo ovos) ou <strong>Chiqueiro</strong> (porcos, exigindo grãos para engorda).</p>
           <p><strong>4. Contratos Estilo Farming Simulator:</strong> Em <strong>💾</strong> você aceita serviços em talhões vizinhos (arar, semear, pulverizar ou colher). O terreno é liberado no mapa para você trabalhar e paga quando atingir 100%.</p>
           <p><strong>5. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
         `;
@@ -3246,13 +3319,17 @@
           <button class="action-btn" onclick="advanceMonth(false); closeModal(); openModal('calendar');">Avançar 1 Mês Agora</button>
         `;
       } else if (type === 'livestock') {
-        title.textContent = '🐄 Pecuária, Rotação de Pasto & Silagem';
+        title.textContent = '🐄 Pecuária, Galinheiro, Chiqueiro & Pasto';
         const ownedHectares = state.hectares.filter(h => h.owned);
         const paddocks = getPasturePaddocks();
         const activePaddocks = paddocks.filter(p => p.isActive && !p.isDegraded);
         const activeCapUA = activePaddocks.reduce((s, p) => s + p.capacityUA, 0);
         const totalHerdUA = getTotalHerdUA();
         const cattleList = state.cattle || [];
+        const chickenCount = cattleList.filter(a => a.type === 'galinha').length;
+        const pigCount = cattleList.filter(a => a.type === 'porco').length;
+        const coopCap = getCoopCapacity();
+        const styCap = getStyCapacity();
         const totalGrainSacks = getTotalGrainSacksInSilo();
         const hasSilageMaker = ownsItem('ensiladeira_forragem');
         const hasAnimalTruck = ownsItem('caminhao_boiadeiro');
@@ -3261,15 +3338,44 @@
 
         body.innerHTML = `
           <div class="confirm-summary-big" style="margin-bottom:10px;">
-            <div class="summary-box"><span>Lotação Real (Pasto Ativo)</span><strong>${totalHerdUA.toFixed(1)} / ${activeCapUA.toFixed(1)} UA (${cattleList.length} cab)</strong></div>
+            <div class="summary-box"><span>Pasto (${totalHerdUA.toFixed(1)}/${activeCapUA.toFixed(1)} UA) · Gal: ${chickenCount}/${coopCap} · Chiq: ${pigCount}/${styCap}</span><strong>${cattleList.length} animais</strong></div>
             <div class="summary-box"><span>Silagem / Leite / Lã / Ovos</span><strong>${(state.silageKg || 0).toFixed(0)} kg · ${(state.milkLiters || 0).toFixed(0)} L · ${(state.woolKg || 0).toFixed(1)} kg · ${(state.eggsDozens || 0).toFixed(1)} dz</strong></div>
           </div>
-          <p class="confirm-sub">Grãos disponíveis no Silo (porcos/galinhas): <strong>${totalGrainSacks.toFixed(1)} sc</strong>. Porcos e galinhas só ganham peso e produzem quando há grãos no silo; vacas/ovelhas/bois só produzem leite/lã e ganham peso com pasto ativo ou silagem suficiente.</p>
+          <p class="confirm-sub">Grãos no Silo: <strong>${totalGrainSacks.toFixed(1)} sc</strong>. Cada espécie precisa da sua instalação própria: <strong>Pasto</strong> p/ bois/vacas/ovelhas, <strong>Galinheiro</strong> p/ galinhas (exige grãos) e <strong>Chiqueiro</strong> p/ porcos (exige grãos).</p>
 
-          <h4 style="margin:8px 0 6px;">1. Revezamento de Piquetes & Junção Opcional</h4>
-          <p class="confirm-sub">Capacidade real: <strong>${UA_CAPACITY_PER_HA} UA/ha</strong> (1 UA = 15@ / 450kg · ~2 a 3 adultos/ha). Cada hectare cercado é um pasto separado; você pode <strong>juntar com um pasto vizinho</strong> se quiser um pasto maior, ou revezar movendo os animais entre eles (3 meses sem animais para rebrotar).</p>
+          <h4 style="margin:8px 0 6px;">1. Transformar Hectare em Pasto, Galinheiro ou Chiqueiro</h4>
+          ${ownedHectares.map(h => {
+            const fac = getHectareFacilityType(h);
+            const statusDesc = fac === 'pasture'
+              ? `🌿 Pasto (${h.pastureDegraded ? `Rebrota ${h.restMonths}/3m` : `Capim ${Math.round(h.grassLevel ?? 100)}%`})`
+              : (fac === 'coop' ? '🐔 Galinheiro (até 45 aves/ha)' : (fac === 'sty' ? '🐷 Chiqueiro (até 18 suínos/ha)' : '🌱 Área de Lavoura'));
+            return `
+              <div class="machine-card" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                  <div class="machine-info">
+                    <strong>Hectare (${h.hc + 1}, ${h.hr + 1})</strong>
+                    <small>${statusDesc}</small>
+                  </div>
+                  ${fac
+                    ? `<button class="action-btn secondary" onclick="clearHectareFacility(${h.id})">Voltar p/ Lavoura</button>`
+                    : ''
+                  }
+                </div>
+                ${!fac ? `
+                  <div class="field-row" style="margin:0;">
+                    <button class="action-btn" onclick="convertHectareFacility(${h.id}, 'pasture')">🌿 Pasto (${formatBRL(FENCE_COST_HA)})</button>
+                    <button class="action-btn gold" onclick="convertHectareFacility(${h.id}, 'coop')">🐔 Galinheiro (${formatBRL(COOP_COST_HA)})</button>
+                    <button class="action-btn" onclick="convertHectareFacility(${h.id}, 'sty')">🐷 Chiqueiro (${formatBRL(STY_COST_HA)})</button>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+
+          <h4 style="margin:10px 0 6px;">2. Revezamento de Piquetes de Pasto</h4>
+          <p class="confirm-sub">Capacidade real do pasto: <strong>${UA_CAPACITY_PER_HA} UA/ha</strong> (1 UA = 15@ / 450kg · ~2 a 3 adultos/ha). Revezar entre pastos evita degradação (3 meses de descanso para rebrotar).</p>
           ${paddocks.length === 0
-            ? `<p class="confirm-sub">Nenhum pasto cercado ainda. Cerque ao menos 1 hectare abaixo para iniciar a criação.</p>`
+            ? `<p class="confirm-sub">Nenhum pasto cercado ainda. Transforme ao menos 1 hectare em Pasto acima para criar bois, vacas ou ovelhas.</p>`
             : paddocks.map((p, idx) => {
                 const coordsLabel = p.members.map(m => `(${m.hc + 1},${m.hr + 1})`).join(' + ');
                 const statusBadge = p.isDegraded
@@ -3314,7 +3420,7 @@
                           </select>
                           <button class="action-btn" onclick="restAndMoveCattle(${p.id})">Descansar & Mover Gado</button>
                         ` : `
-                          <small class="profit-neg">Sem outro pasto pronto! Cerque outro hectare para colocar este em descanso.</small>
+                          <small class="profit-neg">Sem outro pasto pronto! Transforme outro hectare em Pasto para colocar este em descanso.</small>
                         `}
                       </div>
                     ` : (!p.isDegraded ? `
@@ -3327,21 +3433,7 @@
               }).join('')
           }
 
-          <h4 style="margin:10px 0 6px;">2. Cercar / Juntar Hectares p/ Pasto</h4>
-          ${ownedHectares.map(h => `
-            <div class="machine-card">
-              <div class="machine-info">
-                <strong>Hectare (${h.hc + 1}, ${h.hr + 1})</strong>
-                <small>${h.isPasture ? `🪵 Pasto Cercado (${h.pastureDegraded ? `Rebrota ${h.restMonths}/3m` : `Capim ${Math.round(h.grassLevel ?? 100)}%`})` : '🌱 Área de Lavoura'}</small>
-              </div>
-              ${h.isPasture
-                ? `<button class="action-btn secondary" onclick="convertPastureToCrop(${h.id})">Remover Cerca</button>`
-                : `<button class="action-btn" onclick="convertHectareToPasture(${h.id})">Cercar (${formatBRL(FENCE_COST_HA)})</button>`
-              }
-            </div>
-          `).join('')}
-
-          <h4 style="margin:10px 0 6px;">3. Silagem (Poupa Pasto e Evita Abrir Mais Hectares)</h4>
+          <h4 style="margin:10px 0 6px;">3. Silagem (Pasto: Bois, Vacas e Ovelhas)</h4>
           <div class="machine-card">
             <div class="machine-info">
               <strong>Milho: ${state.silo.milho.toFixed(1)} sc · Silagem: ${(state.silageKg || 0).toFixed(0)} kg</strong>
@@ -3376,17 +3468,17 @@
           <h4 style="margin:10px 0 6px;">5. Comprar Animais & Reprodução Natural</h4>
           <p class="confirm-sub">Vacas adultas (≥ 18 meses) emprenham naturalmente (mais rápido com touro no rebanho) e parem após <strong>9 meses de gestação</strong>. Porcos e galinhas consomem grãos do silo todo mês.</p>
           <div class="field-row">
-            <button class="action-btn" onclick="buyAnimal('boi')">+ Boi / Touro (${formatBRL(LIVESTOCK_TYPES.boi.buyPrice)} · 7.5@)</button>
-            <button class="action-btn gold" onclick="buyAnimal('vaca')">+ Vaca Matriz/Leiteira (${formatBRL(LIVESTOCK_TYPES.vaca.buyPrice)} · 13@)</button>
-            <button class="action-btn" onclick="buyAnimal('ovelha')">+ Ovelha (${formatBRL(LIVESTOCK_TYPES.ovelha.buyPrice)} · 2.2@ · Lã)</button>
-            <button class="action-btn gold" onclick="buyAnimal('porco')">+ Porco (${formatBRL(LIVESTOCK_TYPES.porco.buyPrice)} · 2.8@ · 1.2sc grão/m)</button>
-            <button class="action-btn" onclick="buyAnimal('galinha')">+ Galinha (${formatBRL(LIVESTOCK_TYPES.galinha.buyPrice)} · Ovos · 0.35sc grão/m)</button>
+            <button class="action-btn" onclick="buyAnimal('boi')">+ Boi / Touro (${formatBRL(LIVESTOCK_TYPES.boi.buyPrice)} · Pasto)</button>
+            <button class="action-btn gold" onclick="buyAnimal('vaca')">+ Vaca Matriz/Leiteira (${formatBRL(LIVESTOCK_TYPES.vaca.buyPrice)} · Pasto)</button>
+            <button class="action-btn" onclick="buyAnimal('ovelha')">+ Ovelha (${formatBRL(LIVESTOCK_TYPES.ovelha.buyPrice)} · Pasto · Lã)</button>
+            <button class="action-btn gold" onclick="buyAnimal('porco')">+ Porco (${formatBRL(LIVESTOCK_TYPES.porco.buyPrice)} · Chiqueiro · 1.2sc grão/m)</button>
+            <button class="action-btn" onclick="buyAnimal('galinha')">+ Galinha (${formatBRL(LIVESTOCK_TYPES.galinha.buyPrice)} · Galinheiro · 0.35sc grão/m)</button>
           </div>
 
-          <h4 style="margin:10px 0 6px;">6. Rebanho Ativo (Venda Vivo ou Açougue)</h4>
+          <h4 style="margin:10px 0 6px;">6. Animais Ativos (Venda Vivo ou Açougue)</h4>
           <p class="confirm-sub">Vivo Criação: <strong>${formatBRL(LIVE_CATTLE_PRICE_PER_ARROBA)}/@</strong> · Açougue: <strong>${formatBRL(BUTCHER_PRICE_PER_ARROBA)}/@</strong>${hasAnimalTruck ? ' · Caminhão Boiadeiro ativo (frete reduzido)' : ''}.</p>
           ${cattleList.length === 0
-            ? `<p class="confirm-sub">Nenhum animal no pasto ainda.</p>`
+            ? `<p class="confirm-sub">Nenhum animal criado no momento.</p>`
             : cattleList.map((a, i) => {
                 const spec = LIVESTOCK_TYPES[a.type] || LIVESTOCK_TYPES.boi;
                 const freight = hasAnimalTruck ? spec.freightOwn : spec.freightBase;
@@ -3396,9 +3488,10 @@
                 const ageTxt = `${a.ageMonths ?? 14}m`;
                 const pregTxt = (a.type === 'vaca' && a.pregnantMonths > 0) ? ` · 🤰 Prenha (${a.pregnantMonths}/9m)` : '';
                 const calfTxt = ((a.type === 'boi' || a.type === 'vaca') && (a.ageMonths || 0) < 8) ? ' (Bezerro)' : '';
+                const facName = spec.facilityType === 'coop' ? 'Galinheiro' : (spec.facilityType === 'sty' ? 'Chiqueiro' : 'Pasto');
                 const detailLine = spec.requiresGrain
-                  ? `Exige ${spec.grainSacksMonth} sc grãos/mês${spec.eggsDozensMonth > 0 ? ` · ${spec.eggsDozensMonth} dz ovos/mês` : ''} · Açougue ≥ ${spec.minButcherArrobas}@`
-                  : (a.type === 'vaca' ? `Leite após 20m${pregTxt}` : (a.type === 'ovelha' ? `Produz lã/mês · Açougue ≥ ${spec.minButcherArrobas}@` : `Meta açougue: ${spec.minButcherArrobas}@ (máx ${spec.maxArrobas}@)`));
+                  ? `${facName} · Exige ${spec.grainSacksMonth} sc grãos/mês${spec.eggsDozensMonth > 0 ? ` · ${spec.eggsDozensMonth} dz ovos/mês` : ''} · Açougue ≥ ${spec.minButcherArrobas}@`
+                  : `${facName} · ${a.type === 'vaca' ? `Leite após 20m${pregTxt}` : (a.type === 'ovelha' ? `Produz lã/mês · Açougue ≥ ${spec.minButcherArrobas}@` : `Meta açougue: ${spec.minButcherArrobas}@ (máx ${spec.maxArrobas}@)`)}`;
                 return `
                   <div class="machine-card">
                     <div class="machine-info">
@@ -3774,6 +3867,9 @@
       if (!Array.isArray(state.activeTasks)) state.activeTasks = [];
       if (typeof state.woolKg !== 'number') state.woolKg = 0;
       if (typeof state.eggsDozens !== 'number') state.eggsDozens = 0;
+      state.hectares.forEach(h => {
+        if (!h.facilityType && h.isPasture) h.facilityType = 'pasture';
+      });
       clearSelection();
       updateHUD();
       renderWorld();
@@ -3814,21 +3910,30 @@
       document.querySelector('[data-tool="harvest"]').classList.toggle('harvest-ready', hasRipe);
     }
 
-    function convertHectareToPasture(haId) {
+    function convertHectareFacility(haId, facilityType) {
       const ha = state.hectares.find(h => h.id === haId);
-      if (!ha || !ha.owned || ha.isPasture) return;
-      if (state.money < FENCE_COST_HA) {
-        showToast(`Saldo insuficiente para cercar (${formatBRL(FENCE_COST_HA)}).`);
+      if (!ha || !ha.owned || getHectareFacilityType(ha)) return;
+      const costMap = { pasture: FENCE_COST_HA, coop: COOP_COST_HA, sty: STY_COST_HA };
+      const nameMap = { pasture: 'Pasto', coop: 'Galinheiro', sty: 'Chiqueiro' };
+      const cost = costMap[facilityType] ?? FENCE_COST_HA;
+
+      if (state.money < cost) {
+        showToast(`Saldo insuficiente para ${nameMap[facilityType]} (${formatBRL(cost)}).`);
         return;
       }
-      state.money -= FENCE_COST_HA;
-      const hadAnyActivePasture = state.hectares.some(h => h.owned && h.isPasture && h.pastureActive === true && !h.pastureDegraded);
-      ha.isPasture = true;
-      ha.paddockGroupId = ha.id;
-      ha.grassLevel = 100;
-      ha.restMonths = 0;
-      ha.pastureDegraded = false;
-      ha.pastureActive = !hadAnyActivePasture;
+      state.money -= cost;
+
+      if (facilityType === 'pasture') {
+        const hadAnyActivePasture = state.hectares.some(h => h.owned && getHectareFacilityType(h) === 'pasture' && h.pastureActive === true && !h.pastureDegraded);
+        setHectareFacility(ha, 'pasture');
+        ha.paddockGroupId = ha.id;
+        ha.grassLevel = 100;
+        ha.restMonths = 0;
+        ha.pastureDegraded = false;
+        ha.pastureActive = !hadAnyActivePasture;
+      } else {
+        setHectareFacility(ha, facilityType);
+      }
 
       for (let ly = 0; ly < SUB_SIZE; ly++) {
         for (let lx = 0; lx < SUB_SIZE; lx++) {
@@ -3839,7 +3944,52 @@
       }
       updateHUD();
       renderWorld();
-      showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) cercado como pasto independente!`);
+      showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) transformado em ${nameMap[facilityType]}!`);
+      openModal('livestock');
+    }
+
+    function clearHectareFacility(haId) {
+      const ha = state.hectares.find(h => h.id === haId);
+      if (!ha || !ha.owned) return;
+      const fac = getHectareFacilityType(ha);
+      if (!fac) return;
+
+      if (fac === 'pasture') {
+        const pastureCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture').length;
+        const hasGrazing = (state.cattle || []).some(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture');
+        if (pastureCount <= 1 && hasGrazing) {
+          showToast('Venda ou transfira os animais de pasto antes de remover o último pasto.');
+          return;
+        }
+        const wasActive = ha.pastureActive;
+        setHectareFacility(ha, null);
+        ha.paddockGroupId = ha.id;
+        if (wasActive && hasGrazing) {
+          const nextReady = getPasturePaddocks().find(p => !p.isDegraded);
+          if (nextReady) {
+            nextReady.members.forEach(m => { m.pastureActive = true; });
+          }
+        }
+      } else if (fac === 'coop') {
+        const coopCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'coop').length;
+        const chickenCount = (state.cattle || []).filter(a => a.type === 'galinha').length;
+        if (coopCount <= 1 && chickenCount > 0) {
+          showToast('Venda as galinhas antes de remover o último galinheiro.');
+          return;
+        }
+        setHectareFacility(ha, null);
+      } else if (fac === 'sty') {
+        const styCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'sty').length;
+        const pigCount = (state.cattle || []).filter(a => a.type === 'porco').length;
+        if (styCount <= 1 && pigCount > 0) {
+          showToast('Venda os porcos antes de remover o último chiqueiro.');
+          return;
+        }
+        setHectareFacility(ha, null);
+      }
+
+      renderWorld();
+      showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) voltou para lavoura.`);
       openModal('livestock');
     }
 
@@ -3913,31 +4063,6 @@
       openModal('livestock');
     }
 
-    function convertPastureToCrop(haId) {
-      const ha = state.hectares.find(h => h.id === haId);
-      if (!ha || !ha.owned || !ha.isPasture) return;
-      const pastureCount = state.hectares.filter(h => h.owned && h.isPasture).length;
-      if (pastureCount <= 1 && (state.cattle || []).length > 0) {
-        showToast('Venda ou transfira os animais antes de remover o último pasto.');
-        return;
-      }
-      const wasActive = ha.pastureActive;
-      ha.isPasture = false;
-      ha.paddockGroupId = ha.id;
-      ha.pastureActive = false;
-      ha.pastureDegraded = false;
-      ha.grassLevel = 100;
-      if (wasActive && (state.cattle || []).length > 0) {
-        const nextReady = getPasturePaddocks().find(p => !p.isDegraded);
-        if (nextReady) {
-          nextReady.members.forEach(m => { m.pastureActive = true; });
-        }
-      }
-      renderWorld();
-      showToast(`Cerca removida do Hectare (${ha.hc + 1},${ha.hr + 1}).`);
-      openModal('livestock');
-    }
-
     function makeSilageFromCorn(sacksToUse) {
       if (!ownsItem('ensiladeira_forragem')) {
         showToast('Compre ou alugue a Ensiladeira na Loja primeiro.');
@@ -3966,20 +4091,46 @@
     function buyAnimal(type) {
       const spec = LIVESTOCK_TYPES[type];
       if (!spec) return;
-      const paddocks = getPasturePaddocks();
-      if (paddocks.length === 0) {
-        showToast('Cerque pelo menos 1 hectare de pasto antes de comprar animais.');
-        return;
+
+      if (spec.facilityType === 'coop') {
+        const cap = getCoopCapacity();
+        const curCount = (state.cattle || []).filter(a => a.type === 'galinha').length;
+        if (cap <= 0) {
+          showToast('Transforme ao menos 1 hectare em Galinheiro antes de comprar galinhas.');
+          return;
+        }
+        if (curCount + 1 > cap) {
+          showToast(`Galinheiro cheio (${cap} galinhas). Transforme outro hectare em Galinheiro.`);
+          return;
+        }
+      } else if (spec.facilityType === 'sty') {
+        const cap = getStyCapacity();
+        const curCount = (state.cattle || []).filter(a => a.type === 'porco').length;
+        if (cap <= 0) {
+          showToast('Transforme ao menos 1 hectare em Chiqueiro antes de comprar porcos.');
+          return;
+        }
+        if (curCount + 1 > cap) {
+          showToast(`Chiqueiro cheio (${cap} porcos). Transforme outro hectare em Chiqueiro.`);
+          return;
+        }
+      } else {
+        const paddocks = getPasturePaddocks();
+        if (paddocks.length === 0) {
+          showToast('Transforme ao menos 1 hectare em Pasto antes de comprar bois, vacas ou ovelhas.');
+          return;
+        }
+        ensureAtLeastOneActivePaddock();
+        const totalPastureHa = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture').length;
+        const maxUAWithSilage = totalPastureHa * UA_CAPACITY_PER_HA * ((state.silageKg || 0) >= 300 ? 1.8 : 1.0);
+        const addedUA = Math.max(0.05, +(spec.uaWeight * Math.max(0.5, spec.startArrobas / (spec.startArrobas || 5))).toFixed(2));
+        const nextUA = getTotalHerdUA() + addedUA;
+        if (nextUA > maxUAWithSilage + 0.1) {
+          showToast(`Lotação limite (${UA_CAPACITY_PER_HA} UA/ha)! Abra mais pasto ou produza silagem.`);
+          return;
+        }
       }
-      ensureAtLeastOneActivePaddock();
-      const totalPastureHa = state.hectares.filter(h => h.owned && h.isPasture).length;
-      const maxUAWithSilage = totalPastureHa * UA_CAPACITY_PER_HA * ((state.silageKg || 0) >= 300 ? 1.8 : 1.0);
-      const addedUA = Math.max(0.05, +(spec.uaWeight * Math.max(0.5, spec.startArrobas / (spec.startArrobas || 5))).toFixed(2));
-      const nextUA = getTotalHerdUA() + addedUA;
-      if (nextUA > maxUAWithSilage + 0.1) {
-        showToast(`Lotação limite (${UA_CAPACITY_PER_HA} UA/ha)! Cerque mais pasto ou produza silagem.`);
-        return;
-      }
+
       if (state.money < spec.buyPrice) {
         showToast(`Saldo insuficiente (${formatBRL(spec.buyPrice)}).`);
         return;
