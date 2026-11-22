@@ -716,7 +716,7 @@
           </div>
         </div>
 
-        <button class="cream-btn" id="btnAuto10s" onclick="toggleAuto10s()" title="Teste: passa 1 mês a cada 10 segundos">
+        <button class="cream-btn" id="btnAuto10s" onclick="toggleAuto10s()" title="Teste: acelera o tempo (1 mês a cada 10s e trabalhos mais rápidos)">
           ⏱️ 10s/Mês: OFF
         </button>
       </div>
@@ -863,6 +863,9 @@
       care: 10 * 60,    // 10 min/ha = 600s
       harvest: 8 * 60   // 8 min/ha = 480s
     };
+
+    // Fator de aceleração das tarefas no modo teste (10s/Mês)
+    const TEST_MODE_WORK_SPEEDUP = 20;
 
     const TRANSPORT_MODES = {
       camionete: {
@@ -1803,6 +1806,8 @@
       let subText = '';
       let durationSec = 0;
 
+      const speedMult = auto10sTimer ? TEST_MODE_WORK_SPEEDUP : 1;
+
       if (currentTool === 'plant') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
@@ -1815,7 +1820,7 @@
         const ownCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty)).length;
         const contractCount = eligible.length - ownCount;
         const areaHa = eligible.length / TILES_PER_HA;
-        durationSec = eligible.length > 0 ? getWorkDurationSeconds('plant', areaHa) : 0;
+        durationSec = eligible.length > 0 ? Math.max(1, Math.round(getWorkDurationSeconds('plant', areaHa) / speedMult)) : 0;
         const econ = getPlantAreaEconomics(crop, month, areaHa, false, state.transportMode);
         actionCost = econ.plantCost;
 
@@ -1850,7 +1855,7 @@
           return true;
         });
         const areaHa = eligible.length / TILES_PER_HA;
-        durationSec = eligible.length > 0 ? getWorkDurationSeconds('plow', areaHa) : 0;
+        durationSec = eligible.length > 0 ? Math.max(1, Math.round(getWorkDurationSeconds('plow', areaHa) / speedMult)) : 0;
         actionCost = Math.round(areaHa * getPlowCostHa());
         titleText = `Arar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
         btnText = eligible.length ? 'Iniciar Aração' : (blockedCount > 0 ? 'Área Ocupada' : 'Nada p/ Arar');
@@ -1860,7 +1865,7 @@
           <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Operacional</span><strong>${formatBRL(actionCost)}</strong></div>
         `;
-        subText = `Ritmo: 6 min/ha · Custo: ${formatBRL(getPlowCostHa())}/ha${busyNote}.`;
+        subText = `Ritmo: 6 min/ha${auto10sTimer ? ' (acelerado)' : ''} · Custo: ${formatBRL(getPlowCostHa())}/ha${busyNote}.`;
       } else if (currentTool === 'care') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
@@ -1870,7 +1875,7 @@
           return !t.cared && t.growthMonths < c.monthsToGrow;
         });
         const areaHa = eligible.length / TILES_PER_HA;
-        durationSec = eligible.length > 0 ? getWorkDurationSeconds('care', areaHa) : 0;
+        durationSec = eligible.length > 0 ? Math.max(1, Math.round(getWorkDurationSeconds('care', areaHa) / speedMult)) : 0;
         actionCost = Math.round(areaHa * getCareCostHa());
         titleText = `Cuidar / Pulverizar (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
         btnText = eligible.length ? 'Iniciar Cuidado' : (blockedCount > 0 ? 'Área Ocupada' : 'Nada p/ Cuidar');
@@ -1880,7 +1885,7 @@
           <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Insumo/Máquina</span><strong>${formatBRL(actionCost)}</strong></div>
         `;
-        subText = `Ritmo: 10 min/ha · Custo: ${formatBRL(getCareCostHa())}/ha${busyNote}.`;
+        subText = `Ritmo: 10 min/ha${auto10sTimer ? ' (acelerado)' : ''} · Custo: ${formatBRL(getCareCostHa())}/ha${busyNote}.`;
       }
 
       const canAfford = eligible.length > 0 && state.money >= actionCost;
@@ -1937,7 +1942,8 @@
       }
 
       const areaHa = freeCoords.length / TILES_PER_HA;
-      const durationSec = getWorkDurationSeconds(act.type, areaHa);
+      const speedMult = auto10sTimer ? TEST_MODE_WORK_SPEEDUP : 1;
+      const durationSec = Math.max(1, Math.round(getWorkDurationSeconds(act.type, areaHa) / speedMult));
       const scaledCost = Math.round(act.cost * (freeCoords.length / act.coords.length));
 
       state.money -= scaledCost;
@@ -2090,11 +2096,12 @@
     function tickBackgroundWork(elapsedSec = 1) {
       if (!Array.isArray(state.activeTasks) || state.activeTasks.length === 0) return;
 
+      const effectiveElapsed = auto10sTimer ? elapsedSec * TEST_MODE_WORK_SPEEDUP : elapsedSec;
       let anyCompleted = false;
       const stillRunning = [];
 
       state.activeTasks.forEach(task => {
-        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - elapsedSec);
+        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - effectiveElapsed);
         if (task.remainingSeconds <= 0) {
           finalizeCompletedTask(task);
           anyCompleted = true;
@@ -2151,7 +2158,8 @@
       }
 
       const areaHa = ripeTiles.length / TILES_PER_HA;
-      const durationSec = getWorkDurationSeconds('harvest', areaHa);
+      const speedMult = auto10sTimer ? TEST_MODE_WORK_SPEEDUP : 1;
+      const durationSec = Math.max(1, Math.round(getWorkDurationSeconds('harvest', areaHa) / speedMult));
 
       state.money -= costInt;
       state.activeTasks = state.activeTasks || [];
@@ -2300,7 +2308,7 @@
         }
       }
 
-      // Destaque discreto de blocos em trabalho ativo (sem alterar layout)
+      // Destaque discreto de blocos em trabalho ativo
       (state.activeTasks || []).forEach((task) => {
         (task.tileKeys || []).forEach((key) => {
           const [tx, ty] = key.split(',').map(Number);
@@ -2793,7 +2801,7 @@
         auto10sSeconds = 10;
         btn.textContent = '⏱️ 10s/Mês: 10s';
         btn.classList.add('active-timer');
-        showToast('Modo teste: 1 mês passa a cada 10s');
+        showToast(`Modo teste ativo (${TEST_MODE_WORK_SPEEDUP}x nos serviços)`);
         auto10sTimer = setInterval(() => {
           auto10sSeconds -= 1;
           if (auto10sSeconds <= 0) {
@@ -2804,6 +2812,9 @@
             btn.textContent = `⏱️ 10s/Mês: ${auto10sSeconds}s`;
           }
         }, 1000);
+      }
+      if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
+        prepareAreaActionConfirmation();
       }
     }
 
