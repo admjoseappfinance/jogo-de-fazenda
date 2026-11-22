@@ -1,0 +1,3105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Fazenda Pixel - Safra Real (RS)</title>
+  <style>
+    :root {
+      --bg-green: #639e38;
+      --bg-dot: #578e2f;
+      --wood-pill: #573619;
+      --wood-pill-border: #3a220e;
+      --wood-frame: #8a562c;
+      --wood-frame-dark: #4e2d13;
+      --card-cream: #fbf5e6;
+      --card-cream-border: #d9caa8;
+      --gold-accent: #f2b729;
+      --teal-pill: #184e43;
+      --teal-border: #0e332b;
+      --text-dark: #3b2310;
+      --text-muted: #75583c;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-green);
+      background-image: radial-gradient(var(--bg-dot) 3px, transparent 3px);
+      background-size: 26px 26px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text-dark);
+      touch-action: none;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 100%;
+      height: 100dvh;
+      max-width: 620px;
+      margin: 0 auto;
+      padding: max(8px, env(safe-area-inset-top)) 10px max(24px, calc(env(safe-area-inset-bottom) + 18px));
+      gap: 7px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* TOP HUD */
+    .top-area {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .top-pills-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .pills-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px 5px 8px;
+      border-radius: 13px;
+      background: var(--wood-pill);
+      border: 2px solid var(--wood-pill-border);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      color: #fff8e7;
+      cursor: pointer;
+    }
+
+    .stat-pill.teal {
+      background: var(--teal-pill);
+      border-color: var(--teal-border);
+    }
+
+    .stat-pill-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .stat-pill-icon.coin {
+      background: radial-gradient(circle at 30% 30%, #ffe678, #e09612);
+      border: 2px solid #965b04;
+      color: #693e00;
+      font-weight: 900;
+    }
+
+    .stat-pill-texts {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.05;
+    }
+
+    .stat-pill-label {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #e8cfa3;
+    }
+
+    .stat-pill.teal .stat-pill-label {
+      color: #9ed9ca;
+    }
+
+    .stat-pill-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .cream-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      background: var(--card-cream);
+      border: 2px solid var(--wood-frame);
+      box-shadow: 0 2px 0 rgba(48, 28, 10, 0.35);
+      color: var(--text-dark);
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .cream-btn.active-timer {
+      background: #ffe885;
+      border-color: #a86c05;
+      box-shadow: 0 0 0 2px var(--gold-accent);
+    }
+
+    .cream-btn:active {
+      transform: translateY(1px);
+    }
+
+    .top-sub-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .top-sub-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .orange-square-btn {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #f29422 0%, #c9680e 100%);
+      border: 2px solid #592b05;
+      box-shadow: 0 2px 0 rgba(48, 28, 10, 0.35);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .mini-hud-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      padding: 5px 8px;
+      border-radius: 9px;
+      background: rgba(251, 245, 230, 0.95);
+      border: 2px solid var(--wood-frame);
+      box-shadow: 0 2px 0 rgba(48, 28, 10, 0.25);
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-dark);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* CENTER WORLD CANVAS */
+    .world-frame {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      padding: 7px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #cfa06d 0%, #9b6638 100%);
+      border: 3px solid var(--wood-frame-dark);
+      box-shadow:
+        0 6px 0 rgba(36, 58, 20, 0.42),
+        inset 0 2px 0 rgba(255, 232, 198, 0.55);
+      display: flex;
+      position: relative;
+    }
+
+    .world-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
+      border: 3px solid #6b411d;
+      box-shadow: inset 0 0 0 2px #472910;
+      overflow: hidden;
+      position: relative;
+      background: #3d6326;
+    }
+
+    canvas#farmCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    canvas#farmCanvas.pan-mode {
+      cursor: grab;
+    }
+
+    .cam-controls {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 15;
+    }
+
+    .cam-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: var(--card-cream);
+      border: 2px solid var(--wood-pill);
+      box-shadow: 0 2px 0 rgba(48, 28, 10, 0.35);
+      color: var(--text-dark);
+      font-size: 15px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .cam-btn:active {
+      transform: translateY(1px);
+    }
+
+    .cam-btn.active {
+      background: #ffe680;
+      border-color: #b87c07;
+      box-shadow: 0 0 0 2px var(--gold-accent);
+    }
+
+    .zoom-pill {
+      background: rgba(87, 54, 25, 0.92);
+      color: #fff8e7;
+      border: 1.5px solid var(--wood-pill-border);
+      border-radius: 7px;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+      padding: 2px 3px;
+    }
+
+    .sector-badge {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      z-index: 14;
+      background: rgba(87, 54, 25, 0.92);
+      border: 2px solid var(--wood-pill-border);
+      color: #fff8e7;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+
+    /* CONFIRMATION DRAWER */
+    .confirm-card {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      width: min(96%, 430px);
+      z-index: 22;
+      background: var(--card-cream);
+      border: 3px solid var(--wood-pill);
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48);
+      padding: 10px 12px;
+      display: none;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .confirm-card.open {
+      display: flex;
+    }
+
+    .confirm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 900;
+      border-bottom: 1.5px solid var(--card-cream-border);
+      padding-bottom: 5px;
+    }
+
+    .confirm-summary-big {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .summary-box {
+      background: #fffdf7;
+      border: 2px solid var(--card-cream-border);
+      border-radius: 10px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .summary-box span {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .summary-box strong {
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .confirm-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    .profit-pos { color: #1b6919; font-weight: 900; }
+    .profit-neg { color: #a82319; font-weight: 900; }
+
+    /* BOTTOM DOCK */
+    .bottom-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .crop-selector-bar {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      background: rgba(87, 54, 25, 0.94);
+      border: 2px solid var(--wood-pill-border);
+      padding: 4px 8px;
+      border-radius: 999px;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .crop-selector-bar.visible {
+      display: inline-flex;
+    }
+
+    .crop-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--card-cream);
+      border: 2px solid transparent;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-dark);
+      cursor: pointer;
+    }
+
+    .crop-chip.selected {
+      background: #ffe999;
+      border-color: var(--gold-accent);
+    }
+
+    .dock-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      width: 100%;
+      max-width: 390px;
+      padding: 7px;
+      border-radius: 16px;
+      background: var(--wood-pill);
+      border: 2px solid var(--wood-pill-border);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .tool-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px 4px 5px;
+      border-radius: 11px;
+      background: var(--card-cream);
+      border: 2.5px solid #cbb78e;
+      box-shadow: 0 2.5px 0 #b39b6d;
+      color: var(--text-dark);
+      cursor: pointer;
+    }
+
+    .tool-card:active {
+      transform: translateY(1.5px);
+      box-shadow: 0 1px 0 #b39b6d;
+    }
+
+    .tool-card.active {
+      background: #fffdf6;
+      border-color: var(--gold-accent);
+      box-shadow: 0 2.5px 0 #b8810c, 0 0 10px rgba(242, 183, 41, 0.55);
+    }
+
+    .tool-card.harvest-ready {
+      border-color: #369c28;
+      background: #f2fce8;
+    }
+
+    .tool-icon-svg {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tool-card-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text-dark);
+      line-height: 1;
+    }
+
+    .hint-bar {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #f6ffed;
+      text-shadow: 0 1px 2px rgba(20, 44, 10, 0.7);
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    /* MODALS */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(22, 36, 15, 0.65);
+      backdrop-filter: blur(3px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-panel {
+      width: min(94vw, 560px);
+      max-height: 84dvh;
+      overflow-y: auto;
+      background: var(--card-cream);
+      border: 4px solid var(--wood-pill);
+      border-radius: 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      padding: 16px;
+      color: var(--text-dark);
+      font-size: 13px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--card-cream-border);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .close-x {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #c9463d;
+      border: 2px solid #5c1813;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 6px 10px;
+      border-radius: 9px;
+      border: 2px solid var(--wood-frame);
+      background: #efe5cf;
+      color: var(--text-dark);
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--wood-pill);
+      color: #fff8e7;
+    }
+
+    .machine-card {
+      background: #fffdf7;
+      border: 2px solid var(--card-cream-border);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .machine-info strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .machine-info small {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    table.farm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: #fffdf7;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--card-cream-border);
+      margin-bottom: 10px;
+    }
+
+    table.farm-table th, table.farm-table td {
+      padding: 7px 6px;
+      text-align: center;
+      border-bottom: 1px solid #eadec4;
+    }
+
+    table.farm-table th {
+      background: var(--wood-pill);
+      color: #fff6df;
+      font-weight: 800;
+    }
+
+    .price-high { background: #dff2d8; color: #1e5e18; font-weight: 800; }
+    .price-mid { background: #fcf0cc; color: #755309; }
+    .price-low { background: #f9d8d4; color: #8c231b; }
+
+    .action-btn {
+      padding: 6px 11px;
+      border-radius: 9px;
+      border: 2px solid #2b4f18;
+      background: linear-gradient(180deg, #62a838 0%, #458223 100%);
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .action-btn.secondary {
+      background: #ede3cc;
+      border-color: var(--wood-frame);
+      color: var(--text-dark);
+    }
+
+    .action-btn.gold {
+      background: linear-gradient(180deg, #f5b92a 0%, #c98a0c 100%);
+      border-color: #634103;
+      color: #2b1a02;
+    }
+
+    .action-btn.danger {
+      background: linear-gradient(180deg, #d44c42 0%, #a32c24 100%);
+      border-color: #54120e;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    input[type="number"], select {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 2px solid var(--wood-frame);
+      background: #fff;
+      color: var(--text-dark);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      top: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      background: var(--wood-pill);
+      color: #fff8e7;
+      border: 2px solid var(--gold-accent);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP HUD -->
+    <header class="top-area">
+      <div class="top-pills-row">
+        <div class="pills-left">
+          <div class="stat-pill" onclick="openModal('finance')" title="Financeiro, Empréstimos e Simulador de Safra">
+            <div class="stat-pill-icon coin">$</div>
+            <div class="stat-pill-texts">
+              <span class="stat-pill-label">Caixa</span>
+              <span class="stat-pill-val" id="hudMoney">R$ 22.000</span>
+            </div>
+          </div>
+
+          <div class="stat-pill teal" onclick="focusMainHectare()" title="Hectares Próprios">
+            <div class="stat-pill-icon">🌾</div>
+            <div class="stat-pill-texts">
+              <span class="stat-pill-label">Hectares</span>
+              <span class="stat-pill-val" id="hudHectares">1 / 100</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="cream-btn" id="btnAuto10s" onclick="toggleAuto10s()" title="Teste: passa 1 mês a cada 10 segundos">
+          ⏱️ 10s/Mês: OFF
+        </button>
+      </div>
+
+      <div class="top-sub-row">
+        <button class="cream-btn" onclick="fitAllHectares()" title="Ver todos os 100 hectares">
+          🗺️ Mapa Completo
+        </button>
+        <button class="orange-square-btn" onclick="openModal('help')" title="Ajuda">?</button>
+
+        <div class="mini-hud-chip" onclick="openModal('calendar')" id="hudDateChip">
+          ☀️ Jan · Ano 1
+        </div>
+        <div class="mini-hud-chip" onclick="openModal('silo')" id="hudSiloChip">
+          🌾 Silo: 0.0 sc
+        </div>
+        <div class="mini-hud-chip" onclick="openModal('livestock')" id="hudLivestockChip">
+          🐄 Gado: 0
+        </div>
+        <div class="mini-hud-chip" onclick="openModal('shop')">
+          🚜 Loja
+        </div>
+        <div class="mini-hud-chip" onclick="openModal('prices')">
+          📊 Preços
+        </div>
+        <div class="mini-hud-chip" onclick="openModal('save')">
+          💾
+        </div>
+      </div>
+    </header>
+
+    <!-- CENTER WORLD CANVAS -->
+    <main class="world-frame">
+      <div class="world-inner" id="worldViewport">
+        <canvas id="farmCanvas"></canvas>
+
+        <div class="sector-badge" id="sectorBadge">
+          Hectare Principal (5,5) · 100 ha
+        </div>
+
+        <div class="cam-controls">
+          <button class="cam-btn" onclick="zoomBy(1.28)" title="Aproximar Zoom">+</button>
+          <div class="zoom-pill" id="zoomReadout">100%</div>
+          <button class="cam-btn" onclick="zoomBy(0.78)" title="Afastar Zoom">−</button>
+          <button class="cam-btn" id="btnPanToggle" onclick="togglePanMode()" title="Mover Câmera (1 dedo)">✋</button>
+          <button class="cam-btn" onclick="focusMainHectare()" title="Centralizar Fazenda">🏡</button>
+        </div>
+
+        <!-- CONFIRMATION DRAWER -->
+        <div class="confirm-card" id="confirmCard">
+          <div class="confirm-header">
+            <span id="confirmTitle">Confirmar Ação</span>
+            <button class="close-x" onclick="clearSelection()">✕</button>
+          </div>
+          <div class="confirm-summary-big" id="confirmSummaryBoxes"></div>
+          <div class="confirm-sub" id="confirmSubInfo"></div>
+          <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:2px;">
+            <button class="action-btn secondary" onclick="clearSelection()">Cancelar</button>
+            <button class="action-btn" id="confirmExecuteBtn" onclick="executeConfirmedAction()">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- BOTTOM DOCK -->
+    <footer class="bottom-area">
+      <div class="crop-selector-bar" id="cropSelectorBar"></div>
+
+      <div class="dock-container">
+        <button class="tool-card active" data-tool="plow" onclick="setTool('plow')">
+          <div class="tool-icon-svg">
+            <svg width="24" height="24" viewBox="0 0 32 32">
+              <path d="M7 25 L21 11" stroke="#8b5a2b" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M15 7 Q23 7 26 14 L22 16 Q19 11 14 11 Z" fill="#9fb3c8" stroke="#486581" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="tool-card-label">Arar</span>
+        </button>
+
+        <button class="tool-card" data-tool="plant" onclick="setTool('plant')">
+          <div class="tool-icon-svg">
+            <svg width="24" height="24" viewBox="0 0 32 32">
+              <ellipse cx="16" cy="15" rx="6" ry="10" transform="rotate(28 16 15)" fill="#f5c52c" stroke="#9c6f06" stroke-width="1.5"/>
+              <path d="M10 22 Q9 13 15 11 Q13 18 12 24 Z" fill="#5da832" stroke="#2d5e12" stroke-width="1.2"/>
+              <path d="M22 22 Q23 13 17 11 Q19 18 20 24 Z" fill="#6ec23c" stroke="#2d5e12" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <span class="tool-card-label">Plantar</span>
+        </button>
+
+        <button class="tool-card" data-tool="care" onclick="setTool('care')">
+          <div class="tool-icon-svg">
+            <svg width="24" height="24" viewBox="0 0 32 32">
+              <path d="M16 5 C16 5 8 15 8 20 A8 8 0 0 0 24 20 C24 15 16 5 16 5 Z" fill="#4db8ff" stroke="#186fa8" stroke-width="1.8"/>
+              <ellipse cx="13" cy="18" rx="2" ry="4" transform="rotate(-15 13 18)" fill="#bae6ff"/>
+            </svg>
+          </div>
+          <span class="tool-card-label">Cuidar</span>
+        </button>
+
+        <button class="tool-card" data-tool="harvest" onclick="triggerInstantHarvestAll()">
+          <div class="tool-icon-svg">
+            <svg width="24" height="24" viewBox="0 0 32 32">
+              <path d="M7 15 L25 15 L22 25 L10 25 Z" fill="#d99b52" stroke="#754719" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M9 15 Q16 8 23 15" fill="none" stroke="#8f5822" stroke-width="2.2"/>
+              <circle cx="13" cy="14" r="3" fill="#fffdf7" stroke="#c7b99e" stroke-width="1"/>
+              <circle cx="19" cy="14" r="3" fill="#fffdf7" stroke="#c7b99e" stroke-width="1"/>
+            </svg>
+          </div>
+          <span class="tool-card-label">Colher Tudo</span>
+        </button>
+      </div>
+
+      <div class="hint-bar" id="hintBar">
+        Arraste p/ selecionar área e confirmar
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-backdrop" id="modalBackdrop" onclick="onBackdropClick(event)">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Janela</h2>
+        <button class="close-x" onclick="closeModal()">✕</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    const BASE_PLOW_HA = 360;
+    const BASE_CARE_HA = 540;
+    const BASE_HARVEST_HA = 460;
+
+    const TRANSPORT_MODES = {
+      camionete: {
+        id: 'camionete',
+        name: 'Camionete (Aluguel)',
+        minSacks: 20,
+        maxSacks: 70,
+        rentPerSack: 22
+      },
+      caminhao: {
+        id: 'caminhao',
+        name: 'Caminhão (Aluguel)',
+        minSacks: 500,
+        maxSacks: 800,
+        rentPerSack: 8
+      }
+    };
+
+    const SHOP_ITEMS = [
+      {
+        id: 'trator_aracao',
+        name: 'Trator de Preparo (130 cv)',
+        category: 'trator',
+        price: 165000,
+        desc: 'Reduz o custo de Arar em 55% (de R$ 360 para R$ 162/ha).',
+        discountKey: 'plow',
+        discountFactor: 0.45
+      },
+      {
+        id: 'ensiladeira_forragem',
+        name: 'Ensiladeira / Picadora de Milho',
+        category: 'maquinario',
+        price: 48000,
+        desc: 'Permite transformar sacas de Milho em Silagem (1 sc milho = 180 kg silagem) para engorda e leite.',
+        discountKey: 'silage'
+      },
+      {
+        id: 'pulverizador_cuidado',
+        name: 'Pulverizador Autopropelido',
+        category: 'maquinario',
+        price: 215000,
+        desc: 'Reduz o custo de Cuidar em 55% (de R$ 540 para R$ 243/ha).',
+        discountKey: 'care',
+        discountFactor: 0.45
+      },
+      {
+        id: 'colheitadeira_graos',
+        name: 'Colheitadeira de Grãos',
+        category: 'colheitadeira',
+        price: 380000,
+        desc: 'Reduz o custo de Colher em 60% (de R$ 460 para R$ 184/ha).',
+        discountKey: 'harvest',
+        discountFactor: 0.40
+      },
+      {
+        id: 'caminhao_proprio',
+        name: 'Caminhão Graneleiro Próprio',
+        category: 'caminhao',
+        price: 245000,
+        desc: 'Frete de grãos cai de R$ 22/R$ 8 para R$ 3,50/saca.',
+        discountKey: 'freight',
+        ownFreightPerSack: 3.5
+      },
+      {
+        id: 'caminhao_boiadeiro',
+        name: 'Caminhão Boiadeiro (Transporte de Gado)',
+        category: 'caminhao',
+        price: 145000,
+        desc: 'Reduz frete de venda de gado vivo/açougue de R$ 95/cab para R$ 22/cab.',
+        discountKey: 'cattle_freight'
+      },
+      {
+        id: 'caminhao_leite',
+        name: 'Caminhão Tanque Isotérmico (Leite)',
+        category: 'caminhao',
+        price: 132000,
+        desc: 'Frete de coleta de leite cai de R$ 0,32/L para R$ 0,08/L na venda.',
+        discountKey: 'milk_freight'
+      }
+    ];
+
+    const FENCE_COST_HA = 3200; // Cercado de arame liso/mourões tratado por hectare
+    const UA_CAPACITY_PER_HA = 2.2; // Capacidade real RS: ~2.2 UA/ha (1 UA = 15@ / 450kg -> ~2 a 3 adultos ou ~4 bezerros/ha)
+    const PASTURE_REGROWTH_MONTHS = 3; // Tempo mínimo sem animais para rebrota completa
+    const SILAGE_KG_PER_CORN_SACK = 180;
+    const SILAGE_PROCESS_COST_PER_SACK = 18;
+    const MILK_PRICE_PER_LITER = 2.45; // R$/litro realista RS
+    const LIVE_CATTLE_PRICE_PER_ARROBA = 285; // R$/@ cria/recria vivo
+    const BUTCHER_PRICE_PER_ARROBA = 310; // R$/@ boi gordo frigorífico/açougue
+
+    const LIVESTOCK_TYPES = {
+      boi: {
+        id: 'boi',
+        name: 'Boi de Corte (Bezerro/Novilho)',
+        buyPrice: 2350,
+        startArrobas: 7.5,
+        maxArrobas: 21.0,
+        gainBaseMonth: 0.65,
+        gainSilageBonus: 0.55,
+        silageKgPerMonth: 180,
+        milkLitersMonth: 0,
+        minButcherArrobas: 16.5
+      },
+      vaca: {
+        id: 'vaca',
+        name: 'Vaca Leiteira / Matriz (Holandesa/Jersey)',
+        buyPrice: 4600,
+        startArrobas: 13.0,
+        maxArrobas: 17.5,
+        gainBaseMonth: 0.25,
+        gainSilageBonus: 0.20,
+        silageKgPerMonth: 220,
+        milkLitersMonth: 480, // ~16L/dia base sem silagem; +35% com silagem (~21.6L/dia)
+        minButcherArrobas: 14.0
+      }
+    };
+
+    function getAnimalUA(animal) {
+      // 1 UA = 15 arrobas (450 kg peso vivo)
+      return Math.max(0.35, +(animal.arrobas / 15).toFixed(2));
+    }
+
+    function getTotalHerdUA() {
+      return +((state.cattle || []).reduce((sum, a) => sum + getAnimalUA(a), 0)).toFixed(2);
+    }
+
+    function getPasturePaddocks() {
+      // Cada hectare cercado é um piquete separado por padrão; só junta quando o jogador escolhe juntar (paddockGroupId)
+      const groups = new Map();
+      state.hectares.forEach(h => {
+        if (!h.owned || !h.isPasture) return;
+        const gid = h.paddockGroupId != null ? h.paddockGroupId : h.id;
+        if (!groups.has(gid)) groups.set(gid, []);
+        groups.get(gid).push(h);
+      });
+
+      const paddocks = [];
+      groups.forEach((members, gid) => {
+        members.sort((a, b) => a.id - b.id);
+        const minGrass = Math.min(...members.map(m => (typeof m.grassLevel === 'number' ? m.grassLevel : 100)));
+        const maxRest = Math.max(...members.map(m => (m.restMonths || 0)));
+        const isDegraded = members.some(m => m.pastureDegraded);
+        const isActive = members.some(m => m.pastureActive === true && !m.pastureDegraded);
+
+        paddocks.push({
+          id: gid,
+          members,
+          areaHa: members.length,
+          capacityUA: +(members.length * UA_CAPACITY_PER_HA).toFixed(1),
+          grassLevel: Math.round(minGrass),
+          restMonths: maxRest,
+          isDegraded,
+          isActive
+        });
+      });
+
+      paddocks.sort((a, b) => a.members[0].id - b.members[0].id);
+      return paddocks;
+    }
+
+    function ensureAtLeastOneActivePaddock() {
+      const paddocks = getPasturePaddocks();
+      if (paddocks.length === 0) return;
+      const hasActive = paddocks.some(p => p.isActive && !p.isDegraded);
+      if (!hasActive && (state.cattle || []).length === 0) {
+        const ready = paddocks.find(p => !p.isDegraded);
+        if (ready) {
+          ready.members.forEach(m => {
+            m.pastureActive = true;
+          });
+        }
+      }
+    }
+
+    const CROPS = {
+      soja: {
+        id: 'soja',
+        name: 'Soja',
+        color: '#67a832',
+        ripeColor: '#e8c325',
+        monthsToGrow: 4,
+        baseYieldPerHa: 48,
+        careBonusYieldPerHa: 7,
+        plantCostHa: 1680,
+        bestSeasons: ['verao', 'primavera'],
+        okSeasons: ['outono'],
+        prices: [122, 120, 118, 121, 124, 127, 129, 131, 128, 126, 129, 124]
+      },
+      milho: {
+        id: 'milho',
+        name: 'Milho',
+        color: '#e5b828',
+        ripeColor: '#f59e16',
+        monthsToGrow: 3,
+        baseYieldPerHa: 102,
+        careBonusYieldPerHa: 15,
+        plantCostHa: 1520,
+        bestSeasons: ['primavera', 'verao'],
+        okSeasons: ['outono'],
+        prices: [64, 63, 62, 65, 67, 69, 71, 72, 70, 68, 66, 65]
+      },
+      trigo: {
+        id: 'trigo',
+        name: 'Trigo',
+        color: '#d9a441',
+        ripeColor: '#f0be35',
+        monthsToGrow: 3,
+        baseYieldPerHa: 54,
+        careBonusYieldPerHa: 8,
+        plantCostHa: 1050,
+        bestSeasons: ['inverno', 'outono'],
+        okSeasons: ['primavera'],
+        prices: [82, 83, 86, 89, 92, 95, 97, 96, 91, 86, 82, 81]
+      },
+      canola: {
+        id: 'canola',
+        name: 'Canola',
+        color: '#d9cf26',
+        ripeColor: '#eb9d15',
+        monthsToGrow: 4,
+        baseYieldPerHa: 35,
+        careBonusYieldPerHa: 6,
+        plantCostHa: 940,
+        bestSeasons: ['inverno', 'outono'],
+        okSeasons: ['primavera'],
+        prices: [154, 156, 160, 164, 168, 172, 176, 174, 167, 160, 156, 153]
+      }
+    };
+
+    const CROP_LIST = Object.values(CROPS);
+
+    const HA_COLS = 10;
+    const HA_ROWS = 10;
+    const SUB_SIZE = 8;
+    const TILES_PER_HA = 64;
+    const TOTAL_TILE_COLS = HA_COLS * SUB_SIZE;
+    const TOTAL_TILE_ROWS = HA_ROWS * SUB_SIZE;
+    const TILE_PX = 36;
+    const HA_PX = TILE_PX * SUB_SIZE;
+    const MAP_PX = HA_COLS * HA_PX;
+
+    function formatBRL(val) {
+      return Number(val || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0
+      });
+    }
+
+    function getSeasonInfo(monthIdx) {
+      if (monthIdx >= 2 && monthIdx <= 4) return { id: 'outono', name: 'Outono', icon: '🍂', endsMonth: 'Mai', months: [2, 3, 4] };
+      if (monthIdx >= 5 && monthIdx <= 7) return { id: 'inverno', name: 'Inverno', icon: '❄️', endsMonth: 'Ago', months: [5, 6, 7] };
+      if (monthIdx >= 8 && monthIdx <= 10) return { id: 'primavera', name: 'Primavera', icon: '🌸', endsMonth: 'Nov', months: [8, 9, 10] };
+      return { id: 'verao', name: 'Verão', icon: '☀️', endsMonth: 'Fev', months: [11, 0, 1] };
+    }
+
+    function getCropSeasonMultiplier(crop, monthIdx) {
+      const season = getSeasonInfo(monthIdx);
+      if (crop.bestSeasons && crop.bestSeasons.includes(season.id)) {
+        return { mult: 1.28, label: 'Estação Ideal (+28% sacas)' };
+      }
+      if (crop.okSeasons && crop.okSeasons.includes(season.id)) {
+        return { mult: 1.0, label: 'Estação Regular (100% sacas)' };
+      }
+      return { mult: 0.72, label: 'Fora da Estação (-28% sacas)' };
+    }
+
+    function getBestSeasonNames(crop) {
+      const map = { verao: 'Verão', outono: 'Outono', inverno: 'Inverno', primavera: 'Primavera' };
+      return (crop.bestSeasons || []).map(s => map[s]).join(' e ');
+    }
+
+    function getPriceLevel(crop, monthIdx) {
+      const p = crop.prices[monthIdx];
+      const min = Math.min(...crop.prices);
+      const max = Math.max(...crop.prices);
+      const ratio = (p - min) / Math.max(1, max - min);
+      if (ratio >= 0.66) return 'price-high';
+      if (ratio >= 0.33) return 'price-mid';
+      return 'price-low';
+    }
+
+    function ownsItem(itemId) {
+      return Array.isArray(state.ownedMachines) && state.ownedMachines.includes(itemId);
+    }
+
+    function getPlowCostHa() {
+      return ownsItem('trator_aracao') ? Math.round(BASE_PLOW_HA * 0.45) : BASE_PLOW_HA;
+    }
+
+    function getCareCostHa() {
+      return ownsItem('pulverizador_cuidado') ? Math.round(BASE_CARE_HA * 0.45) : BASE_CARE_HA;
+    }
+
+    function getHarvestCostHa() {
+      return ownsItem('colheitadeira_graos') ? Math.round(BASE_HARVEST_HA * 0.40) : BASE_HARVEST_HA;
+    }
+
+    function getTransportRatePerSack(modeId = state.transportMode) {
+      if (ownsItem('caminhao_proprio')) return 3.5;
+      const mode = TRANSPORT_MODES[modeId] || TRANSPORT_MODES.camionete;
+      return mode.rentPerSack;
+    }
+
+    function getPlantAreaEconomics(crop, monthIdx, areaHa, withCare = false, modeId = state.transportMode) {
+      const plantCost = Math.round(areaHa * crop.plantCostHa);
+      const plowCost = Math.round(areaHa * getPlowCostHa());
+      const careCost = withCare ? Math.round(areaHa * getCareCostHa()) : 0;
+      const harvestCost = Math.round(areaHa * getHarvestCostHa());
+      const seasonInfo = getCropSeasonMultiplier(crop, monthIdx);
+      const baseSacks = areaHa * (crop.baseYieldPerHa + (withCare ? crop.careBonusYieldPerHa : 0));
+      const sacks = +(baseSacks * seasonInfo.mult).toFixed(2);
+      const transportCost = Math.round(sacks * getTransportRatePerSack(modeId));
+      const totalCycleCost = plantCost + plowCost + careCost + harvestCost + transportCost;
+      const grossRevenue = Math.round(sacks * crop.prices[monthIdx]);
+      const estimatedProfit = grossRevenue - totalCycleCost;
+
+      return {
+        plantCost,
+        sacks,
+        transportCost,
+        totalCycleCost,
+        grossRevenue,
+        estimatedProfit,
+        seasonLabel: seasonInfo.label,
+        seasonMult: seasonInfo.mult
+      };
+    }
+
+    function createInitialState() {
+      const hectares = [];
+      for (let hr = 0; hr < HA_ROWS; hr++) {
+        for (let hc = 0; hc < HA_COLS; hc++) {
+          const idx = hr * HA_COLS + hc;
+          const soilQuality = ((hc * 7 + hr * 13) % 5) / 4;
+          const price = Math.round(35000 + soilQuality * 33000);
+          const owned = (hc === 4 && hr === 4);
+          hectares.push({
+            id: idx,
+            hc,
+            hr,
+            owned,
+            price,
+            isPasture: false,
+            paddockGroupId: idx,
+            grassLevel: 100,
+            pastureActive: false,
+            restMonths: 0,
+            pastureDegraded: false
+          });
+        }
+      }
+
+      const tiles = new Array(TOTAL_TILE_COLS * TOTAL_TILE_ROWS).fill(null).map((_, i) => {
+        const tx = i % TOTAL_TILE_COLS;
+        const ty = Math.floor(i / TOTAL_TILE_COLS);
+        const hc = Math.floor(tx / SUB_SIZE);
+        const hr = Math.floor(ty / SUB_SIZE);
+        const lx = tx % SUB_SIZE;
+        const ly = ty % SUB_SIZE;
+
+        if (hc === 4 && hr === 4) {
+          const isPlanted = (lx === 2 || lx === 3) && (ly === 3 || ly === 4);
+          const isPlowed =
+            (ly === 2 && lx >= 2 && lx <= 5) ||
+            (ly === 3 && (lx === 1 || lx === 4)) ||
+            (ly === 5 && lx >= 2 && lx <= 5) ||
+            (ly === 6 && lx === 3);
+          if (isPlanted) {
+            return { state: 'planted', cropId: 'soja', growthMonths: 2, cared: false };
+          }
+          if (isPlowed) {
+            return { state: 'plowed', cropId: null, growthMonths: 0, cared: false };
+          }
+        }
+        return { state: 'raw', cropId: null, growthMonths: 0, cared: false };
+      });
+
+      return {
+        money: 500000,
+        monthIndex: 0,
+        year: 1,
+        transportMode: 'camionete',
+        ownedMachines: [],
+        loans: [],
+        silo: { soja: 0, milho: 0, trigo: 0, canola: 0 },
+        silageKg: 0,
+        milkLiters: 0,
+        useSilageToSavePasture: true,
+        cattle: [],
+        hectares,
+        tiles
+      };
+    }
+
+    let state = createInitialState();
+    let currentTool = 'plow';
+    let selectedCropId = 'soja';
+    let selectedTileKeys = new Set();
+    let selectedHaIdToBuy = null;
+    let pendingAction = null;
+    let activeFinanceTab = 'sim';
+    let activeShopTab = 'all';
+
+    let camX = 0;
+    let camY = 0;
+    let zoom = 1.0;
+    const MIN_ZOOM = 0.12;
+    const MAX_ZOOM = 2.4;
+    let panModeActive = false;
+
+    let activePointers = new Map();
+    let isPanning = false;
+    let isBoxSelecting = false;
+    let panStartScreen = { x: 0, y: 0 };
+    let panStartCam = { x: 0, y: 0 };
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
+    let pinchStartMidWorld = null;
+    let boxStartWorld = null;
+    let boxCurrentWorld = null;
+
+    let auto10sTimer = null;
+    let auto10sSeconds = 10;
+
+    const canvas = document.getElementById('farmCanvas');
+    const ctx = canvas.getContext('2d');
+    const worldViewport = document.getElementById('worldViewport');
+
+    function resizeCanvas() {
+      const rect = worldViewport.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      clampCamera();
+      renderWorld();
+    }
+
+    function screenToWorld(sx, sy) {
+      return {
+        x: (sx - camX) / zoom,
+        y: (sy - camY) / zoom
+      };
+    }
+
+    function clampCamera() {
+      const rect = worldViewport.getBoundingClientRect();
+      const viewW = rect.width;
+      const viewH = rect.height;
+      const scaledMap = MAP_PX * zoom;
+      const pad = 80;
+
+      if (scaledMap + pad * 2 <= viewW) {
+        camX = (viewW - scaledMap) / 2;
+      } else {
+        camX = Math.min(pad, Math.max(viewW - scaledMap - pad, camX));
+      }
+
+      if (scaledMap + pad * 2 <= viewH) {
+        camY = (viewH - scaledMap) / 2;
+      } else {
+        camY = Math.min(pad, Math.max(viewH - scaledMap - pad, camY));
+      }
+    }
+
+    function focusMainHectare() {
+      const rect = worldViewport.getBoundingClientRect();
+      const targetZoom = Math.min(1.6, Math.max(0.75, (Math.min(rect.width, rect.height) - 20) / HA_PX));
+      zoom = +targetZoom.toFixed(2);
+      const centerWorldX = 4 * HA_PX + HA_PX / 2;
+      const centerWorldY = 4 * HA_PX + HA_PX / 2;
+      camX = rect.width / 2 - centerWorldX * zoom;
+      camY = rect.height / 2 - centerWorldY * zoom;
+      clampCamera();
+      updateZoomBadge();
+      renderWorld();
+    }
+
+    function fitAllHectares() {
+      const rect = worldViewport.getBoundingClientRect();
+      const fitZoom = Math.max(MIN_ZOOM, (Math.min(rect.width, rect.height) - 16) / MAP_PX);
+      zoom = +fitZoom.toFixed(2);
+      camX = (rect.width - MAP_PX * zoom) / 2;
+      camY = (rect.height - MAP_PX * zoom) / 2;
+      clampCamera();
+      updateZoomBadge();
+      renderWorld();
+      showToast('Mapa completo dos 100 hectares');
+    }
+
+    function zoomBy(factor, pivotSx, pivotSy) {
+      const rect = worldViewport.getBoundingClientRect();
+      const px = pivotSx ?? rect.width / 2;
+      const py = pivotSy ?? rect.height / 2;
+      const worldBefore = screenToWorld(px, py);
+      zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(zoom * factor).toFixed(2)));
+      camX = px - worldBefore.x * zoom;
+      camY = py - worldBefore.y * zoom;
+      clampCamera();
+      updateZoomBadge();
+      renderWorld();
+    }
+
+    function updateZoomBadge() {
+      document.getElementById('zoomReadout').textContent = Math.round(zoom * 100) + '%';
+      const rect = worldViewport.getBoundingClientRect();
+      const centerWorld = screenToWorld(rect.width / 2, rect.height / 2);
+      const hc = Math.min(HA_COLS, Math.max(1, Math.floor(centerWorld.x / HA_PX) + 1));
+      const hr = Math.min(HA_ROWS, Math.max(1, Math.floor(centerWorld.y / HA_PX) + 1));
+      const label = (hc === 5 && hr === 5) ? 'Hectare Principal (5,5)' : `Hectare (${hc},${hr})`;
+      document.getElementById('sectorBadge').textContent = `${label} · 100 ha`;
+    }
+
+    function togglePanMode() {
+      panModeActive = !panModeActive;
+      document.getElementById('btnPanToggle').classList.toggle('active', panModeActive);
+      canvas.classList.toggle('pan-mode', panModeActive);
+      showToast(panModeActive ? 'Modo Mover Câmera ativado (1 dedo)' : 'Modo Selecionar Área ativado');
+    }
+
+    function clearSelection() {
+      selectedTileKeys.clear();
+      selectedHaIdToBuy = null;
+      pendingAction = null;
+      document.getElementById('confirmCard').classList.remove('open');
+      renderWorld();
+    }
+
+    function selectSingleOrBox(x1, y1, x2, y2) {
+      const minX = Math.max(0, Math.min(x1, x2));
+      const maxX = Math.min(MAP_PX - 0.01, Math.max(x1, x2));
+      const minY = Math.max(0, Math.min(y1, y2));
+      const maxY = Math.min(MAP_PX - 0.01, Math.max(y1, y2));
+
+      if (maxX < minX || maxY < minY) return;
+
+      const isSingleTap = Math.hypot(x2 - x1, y2 - y1) < 8;
+      if (isSingleTap) {
+        const tx = Math.floor(minX / TILE_PX);
+        const ty = Math.floor(minY / TILE_PX);
+        const hc = Math.floor(tx / SUB_SIZE);
+        const hr = Math.floor(ty / SUB_SIZE);
+        const ha = state.hectares[hr * HA_COLS + hc];
+        if (!ha.owned) {
+          selectedTileKeys.clear();
+          selectedHaIdToBuy = ha.id;
+          prepareBuyHectareConfirmation(ha);
+          renderWorld();
+          return;
+        }
+        if (ha.isPasture) {
+          selectedTileKeys.clear();
+          selectedHaIdToBuy = null;
+          openModal('livestock');
+          renderWorld();
+          return;
+        }
+      }
+
+      selectedHaIdToBuy = null;
+      selectedTileKeys.clear();
+
+      const txMin = Math.floor(minX / TILE_PX);
+      const txMax = Math.floor(maxX / TILE_PX);
+      const tyMin = Math.floor(minY / TILE_PX);
+      const tyMax = Math.floor(maxY / TILE_PX);
+
+      for (let ty = tyMin; ty <= tyMax; ty++) {
+        for (let tx = txMin; tx <= txMax; tx++) {
+          const hc = Math.floor(tx / SUB_SIZE);
+          const hr = Math.floor(ty / SUB_SIZE);
+          const ha = state.hectares[hr * HA_COLS + hc];
+          if (ha.owned && !ha.isPasture) {
+            selectedTileKeys.add(`${tx},${ty}`);
+          }
+        }
+      }
+
+      if (selectedTileKeys.size > 0) {
+        prepareAreaActionConfirmation();
+      } else {
+        document.getElementById('confirmCard').classList.remove('open');
+      }
+      renderWorld();
+    }
+
+    function prepareBuyHectareConfirmation(ha) {
+      const canBuy = state.money >= ha.price;
+      pendingAction = { type: 'buy_ha', haId: ha.id, cost: ha.price };
+
+      document.getElementById('confirmTitle').textContent = `Comprar Hectare (${ha.hc + 1}, ${ha.hr + 1})`;
+      document.getElementById('confirmSummaryBoxes').innerHTML = `
+        <div class="summary-box"><span>Valor do Hectare</span><strong>${formatBRL(ha.price)}</strong></div>
+        <div class="summary-box"><span>Caixa Após</span><strong class="${canBuy ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - ha.price)}</strong></div>
+      `;
+      document.getElementById('confirmSubInfo').textContent = `1 hectare = 64 blocos (8x8). Caixa atual: ${formatBRL(state.money)}.`;
+
+      const btn = document.getElementById('confirmExecuteBtn');
+      btn.disabled = !canBuy;
+      btn.style.opacity = canBuy ? '1' : '0.5';
+      btn.textContent = canBuy ? 'Comprar' : 'Sem Saldo';
+      document.getElementById('confirmCard').classList.add('open');
+    }
+
+    function prepareAreaActionConfirmation() {
+      const crop = CROPS[selectedCropId];
+      const month = state.monthIndex;
+
+      const coords = [];
+      selectedTileKeys.forEach((key) => {
+        const [tx, ty] = key.split(',').map(Number);
+        coords.push([tx, ty]);
+      });
+
+      let eligible = [];
+      let actionCost = 0;
+      let titleText = '';
+      let btnText = 'Confirmar';
+      let boxesHtml = '';
+      let subText = '';
+
+      if (currentTool === 'plant') {
+        eligible = coords.filter(([tx, ty]) => state.tiles[ty * TOTAL_TILE_COLS + tx].state === 'plowed');
+        const areaHa = eligible.length / TILES_PER_HA;
+        const econ = getPlantAreaEconomics(crop, month, areaHa, false, state.transportMode);
+        actionCost = econ.plantCost;
+        titleText = `Plantar ${crop.name} (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
+        btnText = eligible.length ? 'Confirmar Plantio' : 'Are Antes';
+
+        boxesHtml = `
+          <div class="summary-box"><span>Custo Plantio (${crop.name})</span><strong>${formatBRL(econ.plantCost)}</strong></div>
+          <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
+        `;
+        subText = `${econ.seasonLabel} (ideal: ${getBestSeasonNames(crop)}) · Est. ${econ.sacks.toFixed(1)} sc · Receita bruta ${formatBRL(econ.grossRevenue)} · Ciclo total ${formatBRL(econ.totalCycleCost)}.`;
+      } else if (currentTool === 'plow') {
+        eligible = coords.filter(([tx, ty]) => state.tiles[ty * TOTAL_TILE_COLS + tx].state === 'raw');
+        const areaHa = eligible.length / TILES_PER_HA;
+        actionCost = Math.round(areaHa * getPlowCostHa());
+        titleText = `Arar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
+        btnText = eligible.length ? 'Confirmar' : 'Nada p/ Arar';
+
+        boxesHtml = `
+          <div class="summary-box"><span>Custo p/ Arar</span><strong>${formatBRL(actionCost)}</strong></div>
+          <div class="summary-box"><span>Caixa Após</span><strong class="${state.money - actionCost >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - actionCost)}</strong></div>
+        `;
+        subText = `Valor fixo: ${formatBRL(getPlowCostHa())}/ha para todas as culturas e meses.`;
+      } else if (currentTool === 'care') {
+        eligible = coords.filter(([tx, ty]) => {
+          const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (t.state !== 'planted' || !t.cropId) return false;
+          const c = CROPS[t.cropId];
+          return !t.cared && t.growthMonths < c.monthsToGrow;
+        });
+        const areaHa = eligible.length / TILES_PER_HA;
+        actionCost = Math.round(areaHa * getCareCostHa());
+        titleText = `Cuidar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
+        btnText = eligible.length ? 'Confirmar' : 'Nada p/ Cuidar';
+
+        boxesHtml = `
+          <div class="summary-box"><span>Custo p/ Cuidar</span><strong>${formatBRL(actionCost)}</strong></div>
+          <div class="summary-box"><span>Efeito</span><strong class="profit-pos">+1 Mês & +Sacas</strong></div>
+        `;
+        subText = `Valor fixo: ${formatBRL(getCareCostHa())}/ha · Acelera o crescimento e aumenta a produção.`;
+      }
+
+      const canAfford = eligible.length > 0 && state.money >= actionCost;
+      pendingAction = {
+        type: currentTool,
+        cropId: crop.id,
+        coords: eligible,
+        cost: actionCost
+      };
+
+      document.getElementById('confirmTitle').textContent = titleText;
+      document.getElementById('confirmSummaryBoxes').innerHTML = boxesHtml;
+      document.getElementById('confirmSubInfo').textContent = subText;
+
+      const btn = document.getElementById('confirmExecuteBtn');
+      btn.disabled = !canAfford;
+      btn.style.opacity = canAfford ? '1' : '0.5';
+      btn.textContent = !eligible.length ? btnText : (state.money >= actionCost ? btnText : 'Sem Saldo');
+      document.getElementById('confirmCard').classList.add('open');
+    }
+
+    function executeConfirmedAction() {
+      if (!pendingAction) return;
+      const act = pendingAction;
+
+      if (act.type === 'buy_ha') {
+        const ha = state.hectares[act.haId];
+        if (!ha || ha.owned || state.money < ha.price) return;
+        state.money -= ha.price;
+        ha.owned = true;
+        showToast(`Comprou Hectare (${ha.hc + 1},${ha.hr + 1})!`);
+      } else if (act.type === 'plow') {
+        if (!act.coords.length || state.money < act.cost) return;
+        state.money -= act.cost;
+        act.coords.forEach(([tx, ty]) => {
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          tile.state = 'plowed';
+          tile.cropId = null;
+          tile.growthMonths = 0;
+          tile.cared = false;
+        });
+        showToast(`Arou ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
+      } else if (act.type === 'plant') {
+        if (!act.coords.length || state.money < act.cost) return;
+        state.money -= act.cost;
+        act.coords.forEach(([tx, ty]) => {
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          tile.state = 'planted';
+          tile.cropId = act.cropId;
+          tile.growthMonths = 0;
+          tile.cared = false;
+        });
+        showToast(`Plantou ${CROPS[act.cropId].name} por ${formatBRL(act.cost)}!`);
+      } else if (act.type === 'care') {
+        if (!act.coords.length || state.money < act.cost) return;
+        state.money -= act.cost;
+        act.coords.forEach(([tx, ty]) => {
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (tile.state === 'planted' && tile.cropId) {
+            const c = CROPS[tile.cropId];
+            tile.cared = true;
+            tile.growthMonths = Math.min(c.monthsToGrow, tile.growthMonths + 1);
+          }
+        });
+        showToast(`Cuidou de ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
+      }
+
+      clearSelection();
+      updateHUD();
+      renderWorld();
+    }
+
+    function triggerInstantHarvestAll() {
+      setTool('harvest');
+      const ripeTiles = [];
+
+      for (let ty = 0; ty < TOTAL_TILE_ROWS; ty++) {
+        for (let tx = 0; tx < TOTAL_TILE_COLS; tx++) {
+          const hc = Math.floor(tx / SUB_SIZE);
+          const hr = Math.floor(ty / SUB_SIZE);
+          const ha = state.hectares[hr * HA_COLS + hc];
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (ha.owned && tile.state === 'planted' && tile.cropId) {
+            const c = CROPS[tile.cropId];
+            if (tile.growthMonths >= c.monthsToGrow) {
+              ripeTiles.push({ tx, ty, tile, crop: c });
+            }
+          }
+        }
+      }
+
+      if (ripeTiles.length === 0) {
+        showToast('Nenhuma lavoura madura pronta para colher agora.');
+        return;
+      }
+
+      const harvestRateHa = getHarvestCostHa();
+      let harvestCostTotal = 0;
+      const sacksAdded = { soja: 0, milho: 0, trigo: 0, canola: 0 };
+
+      ripeTiles.forEach(({ crop, tile }) => {
+        const sMult = getCropSeasonMultiplier(crop, state.monthIndex).mult;
+        const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * sMult;
+        sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
+        harvestCostTotal += harvestRateHa / TILES_PER_HA;
+      });
+
+      const costInt = Math.round(harvestCostTotal);
+      if (state.money < costInt) {
+        showToast(`Saldo insuficiente para colher (${formatBRL(costInt)})!`);
+        return;
+      }
+
+      state.money -= costInt;
+      Object.keys(sacksAdded).forEach((cid) => {
+        state.silo[cid] = +(state.silo[cid] + sacksAdded[cid]).toFixed(2);
+      });
+
+      ripeTiles.forEach(({ tx, ty }) => {
+        const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+        tile.state = 'plowed';
+        tile.cropId = null;
+        tile.growthMonths = 0;
+        tile.cared = false;
+      });
+
+      let loanChargedOnHarvest = 0;
+      if (state.loans.length > 0) {
+        const remainingLoans = [];
+        state.loans.forEach((loan) => {
+          const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
+          loanChargedOnHarvest += pay;
+          const nextBal = loan.remainingBalance - pay;
+          const nextInstLeft = loan.installmentsLeft - 1;
+          if (nextBal > 0 && nextInstLeft > 0) {
+            remainingLoans.push({
+              ...loan,
+              remainingBalance: nextBal,
+              installmentsLeft: nextInstLeft
+            });
+          }
+        });
+        state.loans = remainingLoans;
+        state.money -= loanChargedOnHarvest;
+      }
+
+      const totalSc = Object.values(sacksAdded).reduce((a, b) => a + b, 0);
+      clearSelection();
+      updateHUD();
+      renderWorld();
+      if (loanChargedOnHarvest > 0) {
+        showToast(`Colheu ${totalSc.toFixed(1)} sc · Parcela safra cobrada: ${formatBRL(loanChargedOnHarvest)}`);
+      } else {
+        showToast(`Colheu ${totalSc.toFixed(1)} sc p/ Silo · Custo colheita: ${formatBRL(costInt)}`);
+      }
+    }
+
+    function drawCropWithLevelBar(x, y, size, crop, growthMonths, cared) {
+      const isRipe = growthMonths >= crop.monthsToGrow;
+      const progress = Math.min(1, growthMonths / crop.monthsToGrow);
+      const scale = Math.max(0.55, (size / 42) * (0.65 + 0.35 * progress));
+
+      ctx.save();
+      ctx.translate(x + size * 0.5, y + size * 0.52);
+      ctx.scale(scale, scale);
+
+      ctx.strokeStyle = '#387d1e';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-2, 7);
+      ctx.quadraticCurveTo(-2, -2, 2, -9);
+      ctx.stroke();
+
+      ctx.fillStyle = '#5eb832';
+      ctx.beginPath();
+      ctx.ellipse(-6, 1, 5, 2.4, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(5, 2.5, 5, 2.4, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isRipe ? '#ffdf33' : crop.ripeColor;
+      ctx.strokeStyle = '#8c5808';
+      ctx.lineWidth = 1;
+      const grains = [[2, -9], [6, -6.5], [1, -4.5], [5, -2], [0, 0]];
+      grains.forEach(([gx, gy]) => {
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 3.2, 1.8, -0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      if (size * zoom >= 12) {
+        const barW = size - 6;
+        const barH = 4;
+        const bx = x + 3;
+        const by = y + size - 6;
+
+        ctx.fillStyle = 'rgba(25, 20, 12, 0.72)';
+        ctx.fillRect(bx, by, barW, barH);
+
+        ctx.fillStyle = isRipe ? '#47d938' : '#f2c329';
+        ctx.fillRect(bx + 0.5, by + 0.5, Math.max(1, (barW - 1) * progress), barH - 1);
+      }
+
+      if (cared && size * zoom >= 14) {
+        ctx.fillStyle = '#5cd6ff';
+        ctx.beginPath();
+        ctx.arc(x + size - 6, y + 6, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function renderWorld() {
+      const rect = worldViewport.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.fillStyle = '#375c21';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(camX, camY);
+      ctx.scale(zoom, zoom);
+
+      const minTx = Math.max(0, Math.floor(-camX / zoom / TILE_PX));
+      const maxTx = Math.min(TOTAL_TILE_COLS - 1, Math.ceil((w - camX) / zoom / TILE_PX));
+      const minTy = Math.max(0, Math.floor(-camY / zoom / TILE_PX));
+      const maxTy = Math.min(TOTAL_TILE_ROWS - 1, Math.ceil((h - camY) / zoom / TILE_PX));
+
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        const y = ty * TILE_PX;
+        for (let tx = minTx; tx <= maxTx; tx++) {
+          const x = tx * TILE_PX;
+          const hc = Math.floor(tx / SUB_SIZE);
+          const hr = Math.floor(ty / SUB_SIZE);
+          const ha = state.hectares[hr * HA_COLS + hc];
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+
+          if (!ha.owned) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#4d7335' : '#466930';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          } else if (ha.isPasture) {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#79ba47' : '#6ead3e';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          } else if (tile.state === 'raw') {
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#6bb33d' : '#63a837';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          } else if (tile.state === 'plowed') {
+            ctx.fillStyle = '#a36e3e';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            if (TILE_PX * zoom >= 12) {
+              ctx.fillStyle = '#7d4f27';
+              for (let f = 1; f <= 4; f++) {
+                const fy = y + (TILE_PX / 5) * f;
+                ctx.fillRect(x + 2, fy - 1, TILE_PX - 4, 2);
+              }
+            }
+          } else if (tile.state === 'planted') {
+            const crop = CROPS[tile.cropId] || CROPS.soja;
+            ctx.fillStyle = '#5c391b';
+            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            if (TILE_PX * zoom >= 12) {
+              ctx.fillStyle = '#3f250f';
+              for (let f = 1; f <= 4; f++) {
+                const fy = y + (TILE_PX / 5) * f;
+                ctx.fillRect(x + 2, fy - 1, TILE_PX - 4, 2);
+              }
+              drawCropWithLevelBar(x, y, TILE_PX, crop, tile.growthMonths, tile.cared);
+            } else {
+              ctx.fillStyle = tile.growthMonths >= crop.monthsToGrow ? '#47d938' : crop.color;
+              ctx.fillRect(x + 4, y + 4, TILE_PX - 8, TILE_PX - 8);
+            }
+          }
+
+          if (TILE_PX * zoom >= 10) {
+            ctx.strokeStyle = 'rgba(28, 48, 18, 0.28)';
+            ctx.lineWidth = 1 / zoom;
+            ctx.strokeRect(x, y, TILE_PX, TILE_PX);
+          }
+        }
+      }
+
+      selectedTileKeys.forEach((key) => {
+        const [tx, ty] = key.split(',').map(Number);
+        const x = tx * TILE_PX;
+        const y = ty * TILE_PX;
+        ctx.fillStyle = 'rgba(255, 232, 102, 0.32)';
+        ctx.fillRect(x, y, TILE_PX, TILE_PX);
+        ctx.strokeStyle = '#fff275';
+        ctx.lineWidth = 2 / zoom;
+        ctx.strokeRect(x + 1 / zoom, y + 1 / zoom, TILE_PX - 2 / zoom, TILE_PX - 2 / zoom);
+      });
+
+      for (let hr = 0; hr < HA_ROWS; hr++) {
+        for (let hc = 0; hc < HA_COLS; hc++) {
+          const ha = state.hectares[hr * HA_COLS + hc];
+          const hx = hc * HA_PX;
+          const hy = hr * HA_PX;
+
+          if (ha.owned && ha.isPasture) {
+            const gLvl = typeof ha.grassLevel === 'number' ? ha.grassLevel : 100;
+            if (ha.pastureDegraded || gLvl <= 15) {
+              ctx.fillStyle = 'rgba(138, 102, 54, 0.58)';
+              ctx.fillRect(hx, hy, HA_PX, HA_PX);
+            } else if (gLvl < 55) {
+              ctx.fillStyle = 'rgba(166, 138, 62, 0.32)';
+              ctx.fillRect(hx, hy, HA_PX, HA_PX);
+            }
+
+            // Cerca individual por padrão; só remove cerca interna se o jogador tiver juntado os pastos (mesmo paddockGroupId)
+            const myGroup = ha.paddockGroupId != null ? ha.paddockGroupId : ha.id;
+            const topHa = hr > 0 ? state.hectares[(hr - 1) * HA_COLS + hc] : null;
+            const botHa = hr < HA_ROWS - 1 ? state.hectares[(hr + 1) * HA_COLS + hc] : null;
+            const leftHa = hc > 0 ? state.hectares[hr * HA_COLS + (hc - 1)] : null;
+            const rightHa = hc < HA_COLS - 1 ? state.hectares[hr * HA_COLS + (hc + 1)] : null;
+
+            const topNeighbor = topHa?.owned && topHa?.isPasture && (topHa.paddockGroupId ?? topHa.id) === myGroup;
+            const botNeighbor = botHa?.owned && botHa?.isPasture && (botHa.paddockGroupId ?? botHa.id) === myGroup;
+            const leftNeighbor = leftHa?.owned && leftHa?.isPasture && (leftHa.paddockGroupId ?? leftHa.id) === myGroup;
+            const rightNeighbor = rightHa?.owned && rightHa?.isPasture && (rightHa.paddockGroupId ?? rightHa.id) === myGroup;
+
+            ctx.strokeStyle = '#6b3e19';
+            ctx.lineWidth = 4 / zoom;
+            ctx.beginPath();
+            if (!topNeighbor) { ctx.moveTo(hx + 2, hy + 2); ctx.lineTo(hx + HA_PX - 2, hy + 2); }
+            if (!botNeighbor) { ctx.moveTo(hx + 2, hy + HA_PX - 2); ctx.lineTo(hx + HA_PX - 2, hy + HA_PX - 2); }
+            if (!leftNeighbor) { ctx.moveTo(hx + 2, hy + 2); ctx.lineTo(hx + 2, hy + HA_PX - 2); }
+            if (!rightNeighbor) { ctx.moveTo(hx + HA_PX - 2, hy + 2); ctx.lineTo(hx + HA_PX - 2, hy + HA_PX - 2); }
+            ctx.stroke();
+
+            if (HA_PX * zoom >= 52) {
+              const statusTxt = ha.pastureDegraded
+                ? `🍂 REBROTA ${ha.restMonths || 0}/3m`
+                : (ha.pastureActive !== false ? `🐄 ATIVO ${Math.round(gLvl)}%` : `🌿 DESCANSO ${Math.round(gLvl)}%`);
+              ctx.fillStyle = ha.pastureDegraded ? 'rgba(122, 39, 28, 0.9)' : 'rgba(58, 34, 14, 0.86)';
+              ctx.beginPath();
+              ctx.roundRect(hx + 8, hy + 8, 118, 20, 6);
+              ctx.fill();
+              ctx.fillStyle = '#fff8e7';
+              ctx.font = 'bold 10px system-ui, sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText(statusTxt, hx + 13, hy + 21);
+            }
+          } else {
+            ctx.strokeStyle = ha.owned ? '#ffe680' : 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = (ha.owned ? 3 : 1.5) / zoom;
+            ctx.strokeRect(hx, hy, HA_PX, HA_PX);
+          }
+
+          if (selectedHaIdToBuy === ha.id) {
+            ctx.fillStyle = 'rgba(242, 183, 41, 0.35)';
+            ctx.fillRect(hx, hy, HA_PX, HA_PX);
+          }
+
+          if (!ha.owned && HA_PX * zoom >= 42) {
+            const boxW = Math.min(HA_PX - 12, 132);
+            const boxH = 42;
+            const bx = hx + (HA_PX - boxW) / 2;
+            const by = hy + (HA_PX - boxH) / 2;
+
+            ctx.fillStyle = 'rgba(87, 54, 25, 0.88)';
+            ctx.beginPath();
+            ctx.roundRect(bx, by, boxW, boxH, 10);
+            ctx.fill();
+            ctx.strokeStyle = '#3a220e';
+            ctx.lineWidth = 2 / zoom;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fff8e7';
+            ctx.font = 'bold 12px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`HA ${hc + 1},${hr + 1} · À VENDA`, hx + HA_PX / 2, by + 17);
+            ctx.fillStyle = '#a5f29b';
+            ctx.fillText(`R$ ${(ha.price / 1000).toFixed(0)} mil`, hx + HA_PX / 2, by + 33);
+          }
+        }
+      }
+
+      // Desenha animais nos hectares de pasto em uso (ativos)
+      let activePastureHectares = state.hectares.filter(h => h.owned && h.isPasture && h.pastureActive !== false && !h.pastureDegraded);
+      if (activePastureHectares.length === 0) {
+        activePastureHectares = state.hectares.filter(h => h.owned && h.isPasture);
+      }
+      if (activePastureHectares.length > 0 && Array.isArray(state.cattle) && state.cattle.length > 0) {
+        state.cattle.forEach((animal, idx) => {
+          const pHa = activePastureHectares[idx % activePastureHectares.length];
+          const slot = Math.floor(idx / activePastureHectares.length);
+          const colSlot = (slot % 4);
+          const rowSlot = Math.floor(slot / 4) % 4;
+          const ax = pHa.hc * HA_PX + 42 + colSlot * 56;
+          const ay = pHa.hr * HA_PX + 52 + rowSlot * 52;
+          const isCalf = (animal.ageMonths || 0) < 8 || animal.arrobas < 6;
+
+          ctx.save();
+          ctx.translate(ax, ay);
+          if (isCalf) ctx.scale(0.72, 0.72);
+          // Corpo do animal
+          ctx.fillStyle = animal.type === 'vaca' ? '#f7f5f0' : '#8c4a27';
+          ctx.strokeStyle = '#2b180a';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(-12, -7, 24, 14, 5);
+          ctx.fill();
+          ctx.stroke();
+
+          if (animal.type === 'vaca') {
+            ctx.fillStyle = '#262320';
+            ctx.beginPath();
+            ctx.arc(-4, -2, 3.2, 0, Math.PI * 2);
+            ctx.arc(4, 2, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // Cabeça
+          ctx.fillStyle = animal.type === 'vaca' ? '#ebe6dc' : '#6e371a';
+          ctx.beginPath();
+          ctx.arc(13, -3, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      if (isBoxSelecting && boxStartWorld && boxCurrentWorld) {
+        const rx = Math.min(boxStartWorld.x, boxCurrentWorld.x);
+        const ry = Math.min(boxStartWorld.y, boxCurrentWorld.y);
+        const rw = Math.abs(boxCurrentWorld.x - boxStartWorld.x);
+        const rh = Math.abs(boxCurrentWorld.y - boxStartWorld.y);
+        ctx.fillStyle = 'rgba(255, 232, 102, 0.24)';
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = '#fff078';
+        ctx.lineWidth = 2 / zoom;
+        ctx.strokeRect(rx, ry, rw, rh);
+      }
+
+      ctx.restore();
+    }
+
+    function getPinchDist(p1, p2) {
+      return Math.hypot(p2.clientX - p1.clientX, p2.clientY - p1.clientY);
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      activePointers.set(e.pointerId, e);
+      const rect = worldViewport.getBoundingClientRect();
+
+      if (activePointers.size === 2) {
+        isBoxSelecting = false;
+        isPanning = true;
+        const pts = Array.from(activePointers.values());
+        pinchStartDist = getPinchDist(pts[0], pts[1]);
+        pinchStartZoom = zoom;
+        const midX = ((pts[0].clientX + pts[1].clientX) / 2) - rect.left;
+        const midY = ((pts[0].clientY + pts[1].clientY) / 2) - rect.top;
+        pinchStartMidWorld = screenToWorld(midX, midY);
+        return;
+      }
+
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      if (e.button === 1 || e.button === 2 || panModeActive) {
+        isPanning = true;
+        panStartScreen = { x: sx, y: sy };
+        panStartCam = { x: camX, y: camY };
+        return;
+      }
+
+      isBoxSelecting = true;
+      const wpt = screenToWorld(sx, sy);
+      boxStartWorld = wpt;
+      boxCurrentWorld = wpt;
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, e);
+      const rect = worldViewport.getBoundingClientRect();
+
+      if (activePointers.size === 2 && pinchStartDist > 0) {
+        const pts = Array.from(activePointers.values());
+        const dist = getPinchDist(pts[0], pts[1]);
+        const midX = ((pts[0].clientX + pts[1].clientX) / 2) - rect.left;
+        const midY = ((pts[0].clientY + pts[1].clientY) / 2) - rect.top;
+
+        zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(pinchStartZoom * (dist / pinchStartDist)).toFixed(2)));
+        camX = midX - pinchStartMidWorld.x * zoom;
+        camY = midY - pinchStartMidWorld.y * zoom;
+        clampCamera();
+        updateZoomBadge();
+        renderWorld();
+        return;
+      }
+
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      if (isPanning) {
+        camX = panStartCam.x + (sx - panStartScreen.x);
+        camY = panStartCam.y + (sy - panStartScreen.y);
+        clampCamera();
+        updateZoomBadge();
+        renderWorld();
+        return;
+      }
+
+      if (isBoxSelecting) {
+        boxCurrentWorld = screenToWorld(sx, sy);
+        renderWorld();
+      }
+    });
+
+    function endPointer(e) {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size < 2) {
+        pinchStartDist = 0;
+        pinchStartMidWorld = null;
+      }
+
+      if (isPanning && activePointers.size === 0) {
+        isPanning = false;
+        return;
+      }
+
+      if (isBoxSelecting && activePointers.size === 0) {
+        isBoxSelecting = false;
+        if (boxStartWorld && boxCurrentWorld) {
+          selectSingleOrBox(boxStartWorld.x, boxStartWorld.y, boxCurrentWorld.x, boxCurrentWorld.y);
+        }
+        boxStartWorld = null;
+        boxCurrentWorld = null;
+        renderWorld();
+      }
+    }
+
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = worldViewport.getBoundingClientRect();
+      zoomBy(e.deltaY < 0 ? 1.15 : 0.87, e.clientX - rect.left, e.clientY - rect.top);
+    }, { passive: false });
+
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll('.tool-card').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.tool === tool);
+      });
+
+      const cropBar = document.getElementById('cropSelectorBar');
+      cropBar.classList.toggle('visible', tool === 'plant');
+
+      const crop = CROPS[selectedCropId];
+      const hints = {
+        plow: `Arar: ${formatBRL(getPlowCostHa())}/ha (igual p/ todas culturas)`,
+        plant: `Plantar ${crop.name}: ${formatBRL(crop.plantCostHa)}/ha`,
+        care: `Cuidar: ${formatBRL(getCareCostHa())}/ha (igual p/ todas culturas)`,
+        harvest: 'Colher Tudo: colhe todas as lavouras prontas para o Silo'
+      };
+      document.getElementById('hintBar').textContent = hints[tool] || '';
+
+      if (selectedTileKeys.size > 0 && tool !== 'harvest') {
+        prepareAreaActionConfirmation();
+      }
+    }
+
+    function selectCrop(cropId) {
+      selectedCropId = cropId;
+      renderCropSelector();
+      setTool(currentTool);
+    }
+
+    function renderCropSelector() {
+      document.getElementById('cropSelectorBar').innerHTML = CROP_LIST.map((c) => `
+        <button class="crop-chip ${c.id === selectedCropId ? 'selected' : ''}" onclick="selectCrop('${c.id}')">
+          <span>🌱</span>
+          <span>${c.name} (${formatBRL(c.plantCostHa)}/ha)</span>
+        </button>
+      `).join('');
+    }
+
+    function advanceMonth(fromAuto = false) {
+      const prevMonth = state.monthIndex;
+      state.monthIndex = (state.monthIndex + 1) % 12;
+      if (state.monthIndex === 0) {
+        state.year += 1;
+      }
+
+      const curSeason = getSeasonInfo(state.monthIndex);
+      if (!fromAuto) {
+        showToast(`Avançou para ${MONTHS[state.monthIndex]} · Ano ${state.year} (${curSeason.name} acaba em ${curSeason.endsMonth})`);
+      }
+
+      state.tiles.forEach((tile) => {
+        if (tile.state === 'planted' && tile.cropId) {
+          const c = CROPS[tile.cropId];
+          if (tile.growthMonths < c.monthsToGrow) {
+            tile.growthMonths += 1;
+          }
+        }
+      });
+
+      // Ciclo mensal da pecuária: rotação de pasto, rebrota (3 meses), silagem poupando pasto e reprodução realista
+      ensureAtLeastOneActivePaddock();
+      const paddocksBefore = getPasturePaddocks();
+      const activePaddocks = paddocksBefore.filter(p => p.isActive && !p.isDegraded);
+      const activeMembers = activePaddocks.flatMap(p => p.members);
+      const activeMemberIds = new Set(activeMembers.map(m => m.id));
+
+      // Recuperação de pastos em descanso (sem animais)
+      state.hectares.forEach(h => {
+        if (!h.owned || !h.isPasture) return;
+        if (!activeMemberIds.has(h.id)) {
+          h.restMonths = (h.restMonths || 0) + 1;
+          h.grassLevel = Math.min(100, (h.grassLevel ?? 100) + Math.ceil(100 / PASTURE_REGROWTH_MONTHS));
+          if (h.pastureDegraded && h.restMonths >= PASTURE_REGROWTH_MONTHS) {
+            h.pastureDegraded = false;
+            h.grassLevel = 100;
+          }
+        }
+      });
+
+      if (Array.isArray(state.cattle) && state.cattle.length > 0) {
+        const totalUA = getTotalHerdUA();
+        const activeAreaHa = activeMembers.length;
+        const activeCapacityUA = activeAreaHa * UA_CAPACITY_PER_HA;
+
+        let totalSilageNeeded = 0;
+        state.cattle.forEach(a => {
+          const spec = LIVESTOCK_TYPES[a.type] || LIVESTOCK_TYPES.boi;
+          totalSilageNeeded += spec.silageKgPerMonth * (getAnimalUA(a) / 0.85);
+        });
+
+        let silageCoverage = 0;
+        if (state.useSilageToSavePasture !== false && (state.silageKg || 0) > 0 && totalSilageNeeded > 0) {
+          const usedKg = Math.min(state.silageKg, totalSilageNeeded);
+          state.silageKg = +(state.silageKg - usedKg).toFixed(1);
+          silageCoverage = Math.min(1, usedKg / totalSilageNeeded);
+        }
+
+        // Consumo do pasto ativo: silagem reduz desgaste em até 80% evitando precisar de mais pastos
+        let pastureQualityMult = 0.35;
+        if (activeAreaHa > 0) {
+          const effectiveUAOnPasture = totalUA * (1 - silageCoverage * 0.80);
+          const loadRatio = effectiveUAOnPasture / Math.max(0.5, activeCapacityUA);
+          const drainPct = Math.max(4, Math.round(18 * loadRatio));
+
+          activeMembers.forEach(m => {
+            m.restMonths = 0;
+            m.grassLevel = Math.max(0, (m.grassLevel ?? 100) - drainPct);
+            if (m.grassLevel <= 0) {
+              m.pastureDegraded = true;
+              m.pastureActive = false;
+              m.restMonths = 0;
+            }
+          });
+
+          const avgGrass = activeMembers.reduce((s, m) => s + (m.grassLevel ?? 0), 0) / activeAreaHa;
+          const basePastureSupport = Math.min(1.05, (activeCapacityUA / Math.max(0.2, totalUA)) * (0.45 + 0.55 * (avgGrass / 100)));
+          pastureQualityMult = Math.min(1.1, Math.max(0.35, basePastureSupport + silageCoverage * 0.65));
+
+          if (activeMembers.some(m => m.pastureDegraded)) {
+            showToast('⚠️ Pasto acabou! Revezar para outro piquete (3 meses p/ rebrotar).');
+          }
+        } else if (silageCoverage > 0.5) {
+          pastureQualityMult = 0.85;
+        }
+
+        let milkProducedNow = 0;
+        const newbornCalves = [];
+        const adultBullsCount = state.cattle.filter(a => a.type === 'boi' && (a.ageMonths || 14) >= 14).length;
+
+        state.cattle.forEach((animal) => {
+          const spec = LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES.boi;
+          const fedSilage = silageCoverage >= 0.5;
+          const gain = (spec.gainBaseMonth + (fedSilage ? spec.gainSilageBonus * silageCoverage : 0)) * pastureQualityMult;
+          animal.arrobas = +Math.min(spec.maxArrobas, animal.arrobas + gain).toFixed(2);
+          animal.ageMonths = (animal.ageMonths || 12) + 1;
+
+          if (animal.type === 'vaca') {
+            const milkMult = (1 + 0.35 * silageCoverage) * pastureQualityMult;
+            // Só vacas adultas (> 20 meses) produzem leite cheio
+            if ((animal.ageMonths || 24) >= 20) {
+              milkProducedNow += spec.milkLitersMonth * milkMult;
+            }
+
+            // Reprodução bovina realista: vaca adulta (>= 18 meses), gestação de 9 meses e intervalo mínimo de 12 meses entre partos
+            if ((animal.ageMonths || 24) >= 18) {
+              if (animal.pregnantMonths && animal.pregnantMonths > 0) {
+                animal.pregnantMonths += 1;
+                if (animal.pregnantMonths >= 9) {
+                  animal.pregnantMonths = 0;
+                  animal.monthsSinceCalving = 0;
+                  const isFemale = Math.random() < 0.5;
+                  newbornCalves.push({
+                    id: Date.now() + Math.random(),
+                    type: isFemale ? 'vaca' : 'boi',
+                    arrobas: 1.3, // Bezerro recém-nascido (~38-40 kg = 1.3@)
+                    ageMonths: 0,
+                    pregnantMonths: 0,
+                    monthsSinceCalving: 12
+                  });
+                }
+              } else {
+                animal.monthsSinceCalving = (animal.monthsSinceCalving ?? 12) + 1;
+                // Após 3 meses pós-parto (puerpério/cio), chance mensal de emprenhar (maior com touro no rebanho ou inseminação/silagem)
+                if (animal.monthsSinceCalving >= 3 && pastureQualityMult >= 0.65) {
+                  const conceptionChance = adultBullsCount > 0 ? 0.38 : 0.22;
+                  if (Math.random() < conceptionChance) {
+                    animal.pregnantMonths = 1;
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        if (newbornCalves.length > 0) {
+          state.cattle.push(...newbornCalves);
+          showToast(`🐮 Nasceu ${newbornCalves.length} bezerro(s) no rebanho!`);
+        }
+
+        if (milkProducedNow > 0) {
+          state.milkLiters = +((state.milkLiters || 0) + milkProducedNow).toFixed(1);
+        }
+      }
+
+      updateHUD();
+      if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
+        prepareAreaActionConfirmation();
+      }
+      renderWorld();
+
+    }
+
+    function toggleAuto10s() {
+      const btn = document.getElementById('btnAuto10s');
+      if (auto10sTimer) {
+        clearInterval(auto10sTimer);
+        auto10sTimer = null;
+        btn.textContent = '⏱️ 10s/Mês: OFF';
+        btn.classList.remove('active-timer');
+        showToast('Tempo automático 10s pausado');
+      } else {
+        auto10sSeconds = 10;
+        btn.textContent = '⏱️ 10s/Mês: 10s';
+        btn.classList.add('active-timer');
+        showToast('Modo teste: 1 mês passa a cada 10s');
+        auto10sTimer = setInterval(() => {
+          auto10sSeconds -= 1;
+          if (auto10sSeconds <= 0) {
+            auto10sSeconds = 10;
+            advanceMonth(true);
+            btn.textContent = '⏱️ 10s/Mês: 10s';
+          } else {
+            btn.textContent = `⏱️ 10s/Mês: ${auto10sSeconds}s`;
+          }
+        }, 1000);
+      }
+    }
+
+    function openModal(type, tabParam) {
+      const backdrop = document.getElementById('modalBackdrop');
+      const title = document.getElementById('modalTitle');
+      const body = document.getElementById('modalBody');
+
+      if (type === 'help') {
+        title.textContent = '❓ Como Jogar & Regras';
+        body.innerHTML = `
+          <p><strong>1. Custos Fixos:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base para todas as culturas. Só o custo de <strong>Plantar</strong> muda por cultura.</p>
+          <p><strong>2. Selecionar Área p/ Plantar:</strong> Selecione a área na terra arada e veja o <strong>Custo p/ Plantar</strong> e o <strong>Lucro Est.</strong> antes de confirmar.</p>
+          <p><strong>3. Transporte:</strong> Camionete (20 a 70 sacas) cobra <strong>R$ 22/sc</strong>; Caminhão alugado (500 a 800 sacas) cobra <strong>R$ 8/sc</strong>. Comprando equipamentos na <strong>Loja</strong>, os custos caem.</p>
+          <p><strong>4. Empréstimos por Safra:</strong> Parcelados a cada safra (4 meses), com simulador no financeiro para saber se o lucro cobre as parcelas.</p>
+        `;
+      } else if (type === 'shop') {
+        if (tabParam) activeShopTab = tabParam;
+        title.textContent = '🚜 Loja de Maquinários e Veículos';
+        const filtered = activeShopTab === 'all'
+          ? SHOP_ITEMS
+          : SHOP_ITEMS.filter((i) => i.category === activeShopTab);
+
+        body.innerHTML = `
+          <div class="tab-row">
+            <button class="tab-btn ${activeShopTab === 'all' ? 'active' : ''}" onclick="openModal('shop','all')">Todos</button>
+            <button class="tab-btn ${activeShopTab === 'trator' ? 'active' : ''}" onclick="openModal('shop','trator')">Tratores</button>
+            <button class="tab-btn ${activeShopTab === 'colheitadeira' ? 'active' : ''}" onclick="openModal('shop','colheitadeira')">Colheitadeiras</button>
+            <button class="tab-btn ${activeShopTab === 'maquinario' ? 'active' : ''}" onclick="openModal('shop','maquinario')">Implementos</button>
+            <button class="tab-btn ${activeShopTab === 'caminhao' ? 'active' : ''}" onclick="openModal('shop','caminhao')">Caminhões</button>
+          </div>
+          ${filtered.map((item) => {
+            const owned = ownsItem(item.id);
+            const canAfford = !owned && state.money >= item.price;
+            return `
+              <div class="machine-card">
+                <div class="machine-info">
+                  <strong>${item.name}</strong>
+                  <small>${item.desc}</small><br/>
+                  <small><strong>Valor: ${formatBRL(item.price)}</strong></small>
+                </div>
+                ${owned
+                  ? `<button class="action-btn secondary" disabled>Adquirido</button>`
+                  : `<button class="action-btn gold" onclick="buyMachine('${item.id}')" style="opacity:${canAfford ? '1' : '0.5'};">Comprar</button>`
+                }
+              </div>
+            `;
+          }).join('')}
+        `;
+      } else if (type === 'finance') {
+        if (tabParam) activeFinanceTab = tabParam;
+        title.textContent = '🏦 Financeiro, Safra & Empréstimos';
+
+        const totalInstallmentPerHarvest = state.loans.reduce((sum, l) => sum + l.installmentAmount, 0);
+        const totalDebt = state.loans.reduce((sum, l) => sum + l.remainingBalance, 0);
+
+        body.innerHTML = `
+          <div class="tab-row">
+            <button class="tab-btn ${activeFinanceTab === 'sim' ? 'active' : ''}" onclick="openModal('finance','sim')">Simular Lucro x Parcela</button>
+            <button class="tab-btn ${activeFinanceTab === 'loans' ? 'active' : ''}" onclick="openModal('finance','loans')">Empréstimos (${state.loans.length})</button>
+          </div>
+
+          ${activeFinanceTab === 'sim' ? `
+            <p>Simule o lucro estimado de cada produto na estação atual (<strong>${getSeasonInfo(state.monthIndex).icon} ${getSeasonInfo(state.monthIndex).name}</strong>, acaba em <strong>${getSeasonInfo(state.monthIndex).endsMonth}</strong>) frente às parcelas cobradas na colheita (<strong>${formatBRL(totalInstallmentPerHarvest)}</strong>).</p>
+            <div class="field-row">
+              <label><strong>Cultura:</strong></label>
+              <select id="simCrop" onchange="recalcSimulator()">
+                ${CROP_LIST.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
+              </select>
+              <label><strong>Área (ha):</strong></label>
+              <input type="number" id="simHa" value="2" min="0.25" max="100" step="0.25" style="width:74px;" oninput="recalcSimulator()" />
+            </div>
+            <div class="field-row">
+              <label><strong>Transporte:</strong></label>
+              <select id="simTransport" onchange="recalcSimulator()">
+                <option value="camionete" ${state.transportMode === 'camionete' ? 'selected' : ''}>Camionete (20-70 sc · R$22/sc)</option>
+                <option value="caminhao" ${state.transportMode === 'caminhao' ? 'selected' : ''}>Caminhão Aluguel (500-800 sc · R$8/sc)</option>
+              </select>
+            </div>
+            <div id="simResultBox" class="confirm-summary-big" style="margin-top:8px;"></div>
+            <p class="confirm-sub" id="simVerdict" style="margin-top:6px;"></p>
+          ` : `
+            <p class="confirm-sub">Parcelas são cobradas <strong>somente após colher</strong> (fim da safra). Limite: até <strong>2 empréstimos ativos</strong> (máx. R$ 60.000 cada). Caixa: <strong>${formatBRL(state.money)}</strong> · Saldo Devedor: <strong>${formatBRL(totalDebt)}</strong> · Parcela/Colheita: <strong>${formatBRL(totalInstallmentPerHarvest)}</strong></p>
+            <div class="field-row">
+              <label>Valor (R$):</label>
+              <input type="number" id="loanPrincipal" value="15000" step="1000" min="2000" max="60000" style="width:95px;" oninput="previewLoanTerms()" />
+              <label>Parcelas (Colheitas):</label>
+              <select id="loanInstallments" onchange="previewLoanTerms()">
+                <option value="2">2 colheitas (+4% juros)</option>
+                <option value="3" selected>3 colheitas (+6% juros)</option>
+                <option value="4">4 colheitas (+8% juros)</option>
+              </select>
+              <button class="action-btn gold" id="btnTakeLoan" onclick="takeHarvestLoan()">Aceitar Empréstimo</button>
+            </div>
+            <div id="loanPreviewBox" class="summary-box" style="margin-bottom:8px;"></div>
+            ${state.loans.length === 0
+              ? `<p class="confirm-sub">Nenhum empréstimo ativo no momento.</p>`
+              : state.loans.map((l, idx) => `
+                <div class="machine-card">
+                  <div class="machine-info">
+                    <strong>Empréstimo #${idx + 1}</strong>
+                    <small>Parcela/Safra: <strong>${formatBRL(l.installmentAmount)}</strong> · Restam ${l.installmentsLeft} safra(s) · Saldo: ${formatBRL(l.remainingBalance)}</small>
+                  </div>
+                  <button class="action-btn" onclick="payOneInstallment(${l.id})">Pagar 1 Parcela</button>
+                </div>
+              `).join('')
+            }
+          `}
+        `;
+
+        if (activeFinanceTab === 'sim') {
+          recalcSimulator();
+        } else {
+          previewLoanTerms();
+        }
+      } else if (type === 'silo') {
+        title.textContent = '🌾 Silo e Transporte (Sacas 60kg)';
+        const m = state.monthIndex;
+        const rate = getTransportRatePerSack(state.transportMode);
+
+        body.innerHTML = `
+          <div class="field-row">
+            <label><strong>Transporte Atual:</strong></label>
+            <select id="siloTransportSelect" onchange="changeTransportMode(this.value)">
+              <option value="camionete" ${state.transportMode === 'camionete' ? 'selected' : ''}>Camionete (20–70 sc · R$ 22/sc)</option>
+              <option value="caminhao" ${state.transportMode === 'caminhao' ? 'selected' : ''}>Caminhão Aluguel (500–800 sc · R$ 8/sc)</option>
+            </select>
+            ${ownsItem('caminhao_proprio') ? `<span class="profit-pos">Caminhão Próprio: R$ 3,50/sc</span>` : ''}
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="farm-table">
+              <thead>
+                <tr><th>Cultura</th><th>Silo</th><th>Preço (${MONTHS[m]})</th><th>Frete/sc</th><th>Qtd</th><th>Vender</th></tr>
+              </thead>
+              <tbody>
+                ${CROP_LIST.map((c) => `
+                  <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${state.silo[c.id].toFixed(1)} sc</td>
+                    <td>${formatBRL(c.prices[m])}</td>
+                    <td>${formatBRL(rate)}</td>
+                    <td><input type="number" id="sellQty_${c.id}" value="${Math.floor(state.silo[c.id])}" style="width:64px;" /></td>
+                    <td><button class="action-btn" onclick="sellCrop('${c.id}')">Vender</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } else if (type === 'prices') {
+        title.textContent = '📊 Preços Sazonais & Custos Base';
+        const curM = state.monthIndex;
+        body.innerHTML = `
+          <p class="confirm-sub">Estação atual: <strong>${getSeasonInfo(state.monthIndex).icon} ${getSeasonInfo(state.monthIndex).name}</strong> (acaba em <strong>${getSeasonInfo(state.monthIndex).endsMonth}</strong>) · Estação ideal dá <strong>+28% sacas</strong> · Fora da estação: <strong>-28% sacas</strong>.</p>
+          <div style="overflow-x:auto;">
+            <table class="farm-table">
+              <thead>
+                <tr>
+                  <th>Cultura</th>
+                  <th>Plantar/ha</th>
+                  ${MONTHS.map((m, i) => `<th style="${i === curM ? 'outline:2px solid #f2b729;' : ''}">${m}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${CROP_LIST.map((c) => `
+                  <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td><strong>${formatBRL(c.plantCostHa)}</strong></td>
+                    ${c.prices.map((p, i) => `<td class="${getPriceLevel(c, i)}">${formatBRL(p)}</td>`).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } else if (type === 'calendar') {
+        const s = getSeasonInfo(state.monthIndex);
+        title.textContent = '📅 Calendário Agrícola';
+        body.innerHTML = `
+          <p>Data atual: <strong>${MONTHS[state.monthIndex]} · Ano ${state.year}</strong> (${s.icon} <strong>${s.name}</strong> — termina em <strong>${s.endsMonth}</strong>)</p>
+          <p class="confirm-sub">As parcelas de empréstimos são cobradas <strong>somente após colher</strong> (fim da safra).</p>
+          <button class="action-btn" onclick="advanceMonth(false); closeModal(); openModal('calendar');">Avançar 1 Mês Agora</button>
+        `;
+      } else if (type === 'livestock') {
+        title.textContent = '🐄 Pecuária, Rotação de Pasto & Silagem';
+        const ownedHectares = state.hectares.filter(h => h.owned);
+        const paddocks = getPasturePaddocks();
+        const activePaddocks = paddocks.filter(p => p.isActive && !p.isDegraded);
+        const activeCapUA = activePaddocks.reduce((s, p) => s + p.capacityUA, 0);
+        const totalHerdUA = getTotalHerdUA();
+        const cattleList = state.cattle || [];
+        const hasSilageMaker = ownsItem('ensiladeira_forragem');
+        const cattleFreight = ownsItem('caminhao_boiadeiro') ? 22 : 95;
+        const milkFreight = ownsItem('caminhao_leite') ? 0.08 : 0.32;
+        const netMilkPrice = +(MILK_PRICE_PER_LITER - milkFreight).toFixed(2);
+
+        body.innerHTML = `
+          <div class="confirm-summary-big" style="margin-bottom:10px;">
+            <div class="summary-box"><span>Lotação Real (Pasto Ativo)</span><strong>${totalHerdUA.toFixed(1)} / ${activeCapUA.toFixed(1)} UA (${cattleList.length} cab)</strong></div>
+            <div class="summary-box"><span>Silagem / Tanque de Leite</span><strong>${(state.silageKg || 0).toFixed(0)} kg · ${(state.milkLiters || 0).toFixed(0)} L</strong></div>
+          </div>
+
+          <h4 style="margin:8px 0 6px;">1. Revezamento de Piquetes & Junção Opcional</h4>
+          <p class="confirm-sub">Capacidade real: <strong>${UA_CAPACITY_PER_HA} UA/ha</strong> (1 UA = 15@ / 450kg · ~2 a 3 adultos/ha). Cada hectare cercado é um pasto separado; você pode <strong>juntar com um pasto vizinho</strong> se quiser um pasto maior, ou revezar movendo os animais entre eles (3 meses sem animais para rebrotar).</p>
+          ${paddocks.length === 0
+            ? `<p class="confirm-sub">Nenhum pasto cercado ainda. Cerque ao menos 2 hectares abaixo para revezar.</p>`
+            : paddocks.map((p, idx) => {
+                const coordsLabel = p.members.map(m => `(${m.hc + 1},${m.hr + 1})`).join(' + ');
+                const statusBadge = p.isDegraded
+                  ? `🍂 Degradado · Rebrota: ${p.restMonths}/3 meses`
+                  : (p.isActive ? `🐄 EM USO (Rebanho aqui) · Capim ${p.grassLevel}%` : `🌿 Descansando · Capim ${p.grassLevel}%`);
+
+                // Outros pastos disponíveis para onde o jogador pode escolher mover o rebanho
+                const otherReadyPaddocks = paddocks.filter(op => op.id !== p.id && !op.isDegraded);
+
+                // Verifica se existe algum pasto adjacente de outro grupo para opção de juntar
+                const adjacentOtherPaddock = paddocks.find(op => {
+                  if (op.id === p.id) return false;
+                  return p.members.some(m1 => op.members.some(m2 => Math.abs(m1.hc - m2.hc) + Math.abs(m1.hr - m2.hr) === 1));
+                });
+
+                return `
+                  <div class="machine-card" style="flex-direction:column;align-items:stretch;gap:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                      <div class="machine-info">
+                        <strong>Pasto #${idx + 1} · ${p.areaHa} ha [${coordsLabel}]</strong>
+                        <small>${statusBadge} · Suporta ${p.capacityUA} UA</small>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:4px;">
+                        ${adjacentOtherPaddock
+                          ? `<button class="action-btn gold" onclick="mergePaddocks(${p.id}, ${adjacentOtherPaddock.id})">Juntar c/ Vizinho</button>`
+                          : ''
+                        }
+                        ${p.areaHa > 1
+                          ? `<button class="action-btn secondary" onclick="splitPaddock(${p.id})">Separar Pastos</button>`
+                          : ''
+                        }
+                      </div>
+                    </div>
+
+                    ${p.isActive ? `
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid #eadec4;padding-top:6px;">
+                        ${otherReadyPaddocks.length > 0 ? `
+                          <select id="destPaddock_${p.id}" style="flex:1;min-width:140px;">
+                            ${otherReadyPaddocks.map(op => {
+                              const opIdx = paddocks.findIndex(x => x.id === op.id) + 1;
+                              const opCoords = op.members.map(m => `(${m.hc + 1},${m.hr + 1})`).join('+');
+                              return `<option value="${op.id}">Mover p/ Pasto #${opIdx} [${opCoords}] (${op.grassLevel}%)</option>`;
+                            }).join('')}
+                          </select>
+                          <button class="action-btn" onclick="restAndMoveCattle(${p.id})">Descansar & Mover Gado</button>
+                        ` : `
+                          <small class="profit-neg">Sem outro pasto pronto! Cerque outro hectare para colocar este em descanso.</small>
+                        `}
+                      </div>
+                    ` : (!p.isDegraded ? `
+                      <div style="display:flex;justify-content:flex-end;border-top:1px solid #eadec4;padding-top:6px;">
+                        <button class="action-btn" onclick="moveCattleToPaddock(${p.id})">Mover Gado p/ Este Pasto</button>
+                      </div>
+                    ` : '')}
+                  </div>
+                `;
+              }).join('')
+          }
+
+          <h4 style="margin:10px 0 6px;">2. Cercar / Juntar Hectares p/ Pasto</h4>
+          ${ownedHectares.map(h => `
+            <div class="machine-card">
+              <div class="machine-info">
+                <strong>Hectare (${h.hc + 1}, ${h.hr + 1})</strong>
+                <small>${h.isPasture ? `🪵 Pasto Cercado (${h.pastureDegraded ? `Rebrota ${h.restMonths}/3m` : `Capim ${Math.round(h.grassLevel ?? 100)}%`})` : '🌱 Área de Lavoura'}</small>
+              </div>
+              ${h.isPasture
+                ? `<button class="action-btn secondary" onclick="convertPastureToCrop(${h.id})">Remover Cerca</button>`
+                : `<button class="action-btn" onclick="convertHectareToPasture(${h.id})">Cercar (${formatBRL(FENCE_COST_HA)})</button>`
+              }
+            </div>
+          `).join('')}
+
+          <h4 style="margin:10px 0 6px;">3. Silagem (Poupa Pasto e Evita Abrir Mais Hectares)</h4>
+          <div class="machine-card">
+            <div class="machine-info">
+              <strong>Milho: ${state.silo.milho.toFixed(1)} sc · Silagem: ${(state.silageKg || 0).toFixed(0)} kg</strong>
+              <small>${hasSilageMaker
+                ? `1 sc Milho = ${SILAGE_KG_PER_CORN_SACK} kg Silagem (${formatBRL(SILAGE_PROCESS_COST_PER_SACK)}/sc). Reduz em 80% o desgaste do pasto e aumenta ganho/leite.`
+                : 'Compre a Ensiladeira na Loja (R$ 48.000) para produzir silagem.'}</small>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${hasSilageMaker
+                ? `<button class="action-btn gold" onclick="makeSilageFromCorn(5)">Picar 5 sc Milho</button>`
+                : `<button class="action-btn secondary" onclick="openModal('shop','maquinario')">Ir p/ Loja</button>`
+              }
+              <button class="action-btn ${state.useSilageToSavePasture !== false ? '' : 'secondary'}" onclick="toggleSilageFeeding()">
+                ${state.useSilageToSavePasture !== false ? 'Silagem no Cocho: ON' : 'Silagem no Cocho: OFF'}
+              </button>
+            </div>
+          </div>
+
+          <h4 style="margin:10px 0 6px;">4. Leite Ordenhado (Venda à Cooperativa)</h4>
+          <div class="machine-card">
+            <div class="machine-info">
+              <strong>Tanque: ${(state.milkLiters || 0).toFixed(1)} Litros</strong>
+              <small>Preço base ${formatBRL(MILK_PRICE_PER_LITER)}/L − Frete ${formatBRL(milkFreight)}/L = <strong>R$ ${netMilkPrice.toFixed(2)}/L líquido</strong></small>
+            </div>
+            <button class="action-btn" onclick="sellAllMilk()">Vender Leite</button>
+          </div>
+
+          <h4 style="margin:10px 0 6px;">5. Comprar Animais & Reprodução Natural</h4>
+          <p class="confirm-sub">Vacas adultas (≥ 18 meses) emprenham naturalmente (mais rápido com touro no rebanho) e parem após <strong>9 meses de gestação</strong>.</p>
+          <div class="field-row">
+            <button class="action-btn" onclick="buyAnimal('boi')">+ Boi / Touro (${formatBRL(LIVESTOCK_TYPES.boi.buyPrice)} · 7.5@)</button>
+            <button class="action-btn gold" onclick="buyAnimal('vaca')">+ Vaca Matriz/Leiteira (${formatBRL(LIVESTOCK_TYPES.vaca.buyPrice)} · 13@)</button>
+          </div>
+
+          <h4 style="margin:10px 0 6px;">6. Rebanho Ativo (Venda Vivo ou Açougue)</h4>
+          <p class="confirm-sub">Frete: <strong>${formatBRL(cattleFreight)}/cab</strong> · Vivo Criação: <strong>${formatBRL(LIVE_CATTLE_PRICE_PER_ARROBA)}/@</strong> · Açougue (mín. 16.5@ boi / 14@ vaca): <strong>${formatBRL(BUTCHER_PRICE_PER_ARROBA)}/@</strong>.</p>
+          ${cattleList.length === 0
+            ? `<p class="confirm-sub">Nenhum animal no pasto ainda.</p>`
+            : cattleList.map((a, i) => {
+                const spec = LIVESTOCK_TYPES[a.type] || LIVESTOCK_TYPES.boi;
+                const liveVal = Math.max(0, Math.round(a.arrobas * LIVE_CATTLE_PRICE_PER_ARROBA - cattleFreight));
+                const butcherVal = Math.max(0, Math.round(a.arrobas * BUTCHER_PRICE_PER_ARROBA - cattleFreight));
+                const readyButcher = a.arrobas >= spec.minButcherArrobas;
+                const ageTxt = `${a.ageMonths ?? 14}m`;
+                const pregTxt = (a.type === 'vaca' && a.pregnantMonths > 0) ? ` · 🤰 Prenha (${a.pregnantMonths}/9m)` : '';
+                const calfTxt = (a.ageMonths || 0) < 8 ? ' (Bezerro)' : '';
+                return `
+                  <div class="machine-card">
+                    <div class="machine-info">
+                      <strong>#${i + 1} ${a.type === 'vaca' ? '🐄 Vaca' : '🐂 Boi'}${calfTxt} — ${a.arrobas.toFixed(2)} @ (${ageTxt})</strong>
+                      <small>${a.type === 'vaca' ? `Leite após 20m${pregTxt}` : `Meta açougue: ${spec.minButcherArrobas}@ (máx ${spec.maxArrobas}@)`}</small>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      <button class="action-btn secondary" onclick="sellAnimal(${a.id}, 'live')">Vender Vivo (${formatBRL(liveVal)})</button>
+                      <button class="action-btn ${readyButcher ? '' : 'secondary'}" onclick="sellAnimal(${a.id}, 'butcher')" ${readyButcher ? '' : 'disabled style="opacity:0.5;"'}>Açougue (${formatBRL(butcherVal)})</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')
+          }
+        `;
+      } else if (type === 'save') {
+        title.textContent = '💾 Salvar / Reiniciar Jogo';
+        body.innerHTML = `
+          <div class="field-row">
+            <button class="action-btn" onclick="saveGame()">Salvar</button>
+            <button class="action-btn gold" onclick="loadGame()">Carregar</button>
+            <button class="action-btn danger" onclick="resetGame()">Novo Jogo</button>
+          </div>
+        `;
+      }
+
+      backdrop.classList.add('open');
+    }
+
+    function recalcSimulator() {
+      const cropId = document.getElementById('simCrop')?.value || 'soja';
+      const ha = Math.max(0.25, Number(document.getElementById('simHa')?.value) || 1);
+      const modeId = document.getElementById('simTransport')?.value || state.transportMode;
+      const crop = CROPS[cropId];
+      const econ = getPlantAreaEconomics(crop, state.monthIndex, ha, false, modeId);
+      const installmentPerHarvest = state.loans.reduce((s, l) => s + l.installmentAmount, 0);
+      const afterLoanProfit = econ.estimatedProfit - installmentPerHarvest;
+
+      const box = document.getElementById('simResultBox');
+      const verdict = document.getElementById('simVerdict');
+      if (!box || !verdict) return;
+
+      box.innerHTML = `
+        <div class="summary-box"><span>Investimento Total Ciclo</span><strong>${formatBRL(econ.totalCycleCost)}</strong></div>
+        <div class="summary-box"><span>Lucro Est. da Safra</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
+        <div class="summary-box"><span>Parcelas Empréstimo/Safra</span><strong>${formatBRL(installmentPerHarvest)}</strong></div>
+        <div class="summary-box"><span>Sobra p/ Pagar Empréstimo</span><strong class="${afterLoanProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(afterLoanProfit)}</strong></div>
+      `;
+
+      if (installmentPerHarvest === 0) {
+        verdict.textContent = `${crop.name}: ${econ.seasonLabel} (ideal: ${getBestSeasonNames(crop)}) · ${econ.sacks.toFixed(1)} sc · Receita bruta ${formatBRL(econ.grossRevenue)}.`;
+      } else if (afterLoanProfit >= 0) {
+        verdict.innerHTML = `<span class="profit-pos">Cobre as parcelas:</span> o lucro estimado cobre os ${formatBRL(installmentPerHarvest)} da safra e ainda sobra ${formatBRL(afterLoanProfit)}.`;
+      } else {
+        verdict.innerHTML = `<span class="profit-neg">Atenção:</span> o lucro estimado não cobre os ${formatBRL(installmentPerHarvest)} de parcelas desta safra (falta ${formatBRL(Math.abs(afterLoanProfit))}).`;
+      }
+    }
+
+    function changeTransportMode(newMode) {
+      if (TRANSPORT_MODES[newMode]) {
+        state.transportMode = newMode;
+        showToast(`Transporte alterado para ${TRANSPORT_MODES[newMode].name}`);
+        if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
+          prepareAreaActionConfirmation();
+        }
+        closeModal();
+        openModal('silo');
+      }
+    }
+
+    function buyMachine(itemId) {
+      const item = SHOP_ITEMS.find((i) => i.id === itemId);
+      if (!item || ownsItem(itemId) || state.money < item.price) {
+        showToast('Saldo insuficiente para este equipamento.');
+        return;
+      }
+      state.money -= item.price;
+      state.ownedMachines.push(itemId);
+      updateHUD();
+      setTool(currentTool);
+      showToast(`Comprou ${item.name}! Custos reduzidos.`);
+      closeModal();
+      openModal('shop', activeShopTab);
+    }
+
+    function getLoanCalculation(principal, installments) {
+      const cleanP = Math.max(0, Math.min(60000, Math.round(principal || 0)));
+      const inst = Math.max(2, Math.min(4, Number(installments) || 3));
+      const interestRate = 0.02 * inst; // juros baixos: 4% em 2x, 6% em 3x, 8% em 4x
+      const totalWithInterest = Math.round(cleanP * (1 + interestRate));
+      const installmentAmount = Math.round(totalWithInterest / inst);
+      return { cleanP, inst, interestRate, totalWithInterest, installmentAmount };
+    }
+
+    function previewLoanTerms() {
+      const box = document.getElementById('loanPreviewBox');
+      const btn = document.getElementById('btnTakeLoan');
+      if (!box) return;
+      const p = Number(document.getElementById('loanPrincipal')?.value) || 0;
+      const inst = Number(document.getElementById('loanInstallments')?.value) || 3;
+      const calc = getLoanCalculation(p, inst);
+      const atLimit = state.loans.length >= 2;
+      const validAmount = calc.cleanP >= 2000 && calc.cleanP <= 60000;
+
+      box.innerHTML = `
+        <span>Resumo Antes de Aceitar (${(calc.interestRate * 100).toFixed(0)}% juros no total)</span>
+        <strong>Parcela por colheita: ${formatBRL(calc.installmentAmount)} (${calc.inst}x de ${formatBRL(calc.installmentAmount)} · Total ${formatBRL(calc.totalWithInterest)})</strong>
+      `;
+      if (btn) {
+        const ok = !atLimit && validAmount;
+        btn.disabled = !ok;
+        btn.style.opacity = ok ? '1' : '0.5';
+      }
+    }
+
+    function takeHarvestLoan() {
+      if (state.loans.length >= 2) {
+        showToast('Limite atingido: máximo de 2 empréstimos ativos.');
+        return;
+      }
+      const principal = Math.round(Number(document.getElementById('loanPrincipal').value) || 0);
+      const installments = Number(document.getElementById('loanInstallments').value) || 3;
+      if (principal < 2000 || principal > 60000) {
+        showToast('Valor permitido: entre R$ 2.000 e R$ 60.000.');
+        return;
+      }
+      const calc = getLoanCalculation(principal, installments);
+
+      state.money += calc.cleanP;
+      state.loans.push({
+        id: Date.now() + Math.random(),
+        principal: calc.cleanP,
+        totalWithInterest: calc.totalWithInterest,
+        remainingBalance: calc.totalWithInterest,
+        installmentsLeft: calc.inst,
+        installmentAmount: calc.installmentAmount
+      });
+
+      updateHUD();
+      showToast(`Empréstimo aceito: ${calc.inst}x de ${formatBRL(calc.installmentAmount)} após colher.`);
+      closeModal();
+      openModal('finance', 'loans');
+    }
+
+    function payOneInstallment(loanId) {
+      const idx = state.loans.findIndex((l) => l.id === loanId);
+      if (idx === -1) return;
+      const loan = state.loans[idx];
+      const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
+      if (state.money < pay) {
+        showToast('Saldo insuficiente para pagar a parcela.');
+        return;
+      }
+      state.money -= pay;
+      loan.remainingBalance -= pay;
+      loan.installmentsLeft -= 1;
+      if (loan.remainingBalance <= 0 || loan.installmentsLeft <= 0) {
+        state.loans.splice(idx, 1);
+      }
+      updateHUD();
+      showToast(`Pagou parcela de ${formatBRL(pay)}!`);
+      closeModal();
+      openModal('finance', 'loans');
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('open');
+    }
+
+    function onBackdropClick(e) {
+      if (e.target.id === 'modalBackdrop') closeModal();
+    }
+
+    function sellCrop(cropId) {
+      const crop = CROPS[cropId];
+      const qty = Number(document.getElementById(`sellQty_${cropId}`).value);
+      if (!Number.isFinite(qty) || qty <= 0 || qty > state.silo[cropId] + 1e-6) {
+        showToast('Quantidade inválida no Silo!');
+        return;
+      }
+
+      if (!ownsItem('caminhao_proprio')) {
+        const mode = TRANSPORT_MODES[state.transportMode] || TRANSPORT_MODES.camionete;
+        if (qty < mode.minSacks || qty > mode.maxSacks) {
+          showToast(`${mode.name} leva de ${mode.minSacks} a ${mode.maxSacks} sacas por viagem.`);
+          return;
+        }
+      }
+
+      const rate = getTransportRatePerSack(state.transportMode);
+      const gross = qty * crop.prices[state.monthIndex];
+      const freight = qty * rate;
+      const net = Math.round(gross - freight);
+      state.silo[cropId] = Math.max(0, +(state.silo[cropId] - qty).toFixed(2));
+      state.money += net;
+      updateHUD();
+      showToast(`Vendeu ${qty} sc · Frete ${formatBRL(freight)} · Líquido: ${formatBRL(net)}`);
+      closeModal();
+      openModal('silo');
+    }
+
+    function saveGame() {
+      localStorage.setItem('fazendaPixelSafraReal_RS_v3', JSON.stringify(state));
+      showToast('Jogo salvo!');
+    }
+
+    function loadGame() {
+      const raw = localStorage.getItem('fazendaPixelSafraReal_RS_v3');
+      if (!raw) {
+        showToast('Nenhum save encontrado!');
+        return;
+      }
+      state = JSON.parse(raw);
+      clearSelection();
+      updateHUD();
+      renderWorld();
+      showToast('Save carregado!');
+    }
+
+    function resetGame() {
+      localStorage.removeItem('fazendaPixelSafraReal_RS_v3');
+      state = createInitialState();
+      clearSelection();
+      updateHUD();
+      focusMainHectare();
+      closeModal();
+      showToast('Fazenda reiniciada!');
+    }
+
+    function updateHUD() {
+      document.getElementById('hudMoney').textContent = formatBRL(state.money);
+      const ownedCount = state.hectares.filter((h) => h.owned).length;
+      document.getElementById('hudHectares').textContent = `${ownedCount} / 100`;
+      const s = getSeasonInfo(state.monthIndex);
+      document.getElementById('hudDateChip').textContent = `${s.icon} ${MONTHS[state.monthIndex]} · Ano ${state.year}`;
+      const totalSacks = Object.values(state.silo).reduce((a, b) => a + b, 0);
+      document.getElementById('hudSiloChip').textContent = `🌾 Silo: ${totalSacks.toFixed(1)} sc`;
+      const cattleChip = document.getElementById('hudLivestockChip');
+      if (cattleChip) {
+        cattleChip.textContent = `🐄 Gado: ${(state.cattle || []).length}`;
+      }
+
+      let hasRipe = false;
+      for (let i = 0; i < state.tiles.length; i++) {
+        const t = state.tiles[i];
+        if (t.state === 'planted' && t.cropId && t.growthMonths >= CROPS[t.cropId].monthsToGrow) {
+          hasRipe = true;
+          break;
+        }
+      }
+      document.querySelector('[data-tool="harvest"]').classList.toggle('harvest-ready', hasRipe);
+    }
+
+    function convertHectareToPasture(haId) {
+      const ha = state.hectares.find(h => h.id === haId);
+      if (!ha || !ha.owned || ha.isPasture) return;
+      if (state.money < FENCE_COST_HA) {
+        showToast(`Saldo insuficiente para cercar (${formatBRL(FENCE_COST_HA)}).`);
+        return;
+      }
+      state.money -= FENCE_COST_HA;
+      const hadAnyActivePasture = state.hectares.some(h => h.owned && h.isPasture && h.pastureActive === true && !h.pastureDegraded);
+      ha.isPasture = true;
+      ha.paddockGroupId = ha.id; // Não junta automaticamente; fica como pasto independente
+      ha.grassLevel = 100;
+      ha.restMonths = 0;
+      ha.pastureDegraded = false;
+      ha.pastureActive = !hadAnyActivePasture;
+
+      // Limpa lavouras nesse hectare ao virar pasto
+      for (let ly = 0; ly < SUB_SIZE; ly++) {
+        for (let lx = 0; lx < SUB_SIZE; lx++) {
+          const tx = ha.hc * SUB_SIZE + lx;
+          const ty = ha.hr * SUB_SIZE + ly;
+          state.tiles[ty * TOTAL_TILE_COLS + tx] = { state: 'raw', cropId: null, growthMonths: 0, cared: false };
+        }
+      }
+      updateHUD();
+      renderWorld();
+      showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) cercado como pasto independente!`);
+      openModal('livestock');
+    }
+
+    function mergePaddocks(paddockIdA, paddockIdB) {
+      const paddocks = getPasturePaddocks();
+      const pA = paddocks.find(p => p.id === paddockIdA);
+      const pB = paddocks.find(p => p.id === paddockIdB);
+      if (!pA || !pB || pA.id === pB.id) return;
+
+      const newGroupId = Math.min(pA.id, pB.id);
+      const anyActive = pA.isActive || pB.isActive;
+      [...pA.members, ...pB.members].forEach(m => {
+        m.paddockGroupId = newGroupId;
+        if (anyActive && !m.pastureDegraded) {
+          m.pastureActive = true;
+        }
+      });
+
+      renderWorld();
+      showToast(`Pastos juntados (${pA.areaHa + pB.areaHa} ha)!`);
+      openModal('livestock');
+    }
+
+    function splitPaddock(paddockId) {
+      const paddocks = getPasturePaddocks();
+      const target = paddocks.find(p => p.id === paddockId);
+      if (!target || target.members.length <= 1) return;
+
+      target.members.forEach((m, idx) => {
+        m.paddockGroupId = m.id;
+        // Se estava ativo, mantém o rebanho no primeiro hectare e deixa os demais em descanso prontos para revezar
+        if (target.isActive) {
+          m.pastureActive = (idx === 0);
+        }
+      });
+
+      renderWorld();
+      showToast('Pastos separados novamente em hectares individuais!');
+      openModal('livestock');
+    }
+
+    function moveCattleToPaddock(destPaddockId) {
+      const paddocks = getPasturePaddocks();
+      const dest = paddocks.find(p => p.id === destPaddockId);
+      if (!dest) return;
+      if (dest.isDegraded) {
+        showToast(`Este pasto precisa de descanso (${dest.restMonths}/3 meses) para rebrotar.`);
+        return;
+      }
+      paddocks.forEach(p => {
+        const isDest = (p.id === destPaddockId);
+        p.members.forEach(m => { m.pastureActive = isDest; });
+      });
+      renderWorld();
+      showToast(`Rebanho movido para o pasto selecionado (${dest.areaHa} ha)!`);
+      openModal('livestock');
+    }
+
+    function restAndMoveCattle(sourcePaddockId) {
+      const sel = document.getElementById(`destPaddock_${sourcePaddockId}`);
+      const destId = sel ? Number(sel.value) : null;
+      if (destId == null || Number.isNaN(destId)) {
+        showToast('Selecione para qual pasto deseja mover os animais.');
+        return;
+      }
+      moveCattleToPaddock(destId);
+    }
+
+    function toggleSilageFeeding() {
+      state.useSilageToSavePasture = !(state.useSilageToSavePasture !== false);
+      showToast(state.useSilageToSavePasture ? 'Silagem liberada no cocho (poupa o pasto)' : 'Uso de silagem pausado');
+      openModal('livestock');
+    }
+
+    function convertPastureToCrop(haId) {
+      const ha = state.hectares.find(h => h.id === haId);
+      if (!ha || !ha.owned || !ha.isPasture) return;
+      const pastureCount = state.hectares.filter(h => h.owned && h.isPasture).length;
+      if (pastureCount <= 1 && (state.cattle || []).length > 0) {
+        showToast('Venda ou transfira o gado antes de remover o último pasto.');
+        return;
+      }
+      const wasActive = ha.pastureActive;
+      ha.isPasture = false;
+      ha.paddockGroupId = ha.id;
+      ha.pastureActive = false;
+      ha.pastureDegraded = false;
+      ha.grassLevel = 100;
+      if (wasActive && (state.cattle || []).length > 0) {
+        const nextReady = getPasturePaddocks().find(p => !p.isDegraded);
+        if (nextReady) {
+          nextReady.members.forEach(m => { m.pastureActive = true; });
+        }
+      }
+      renderWorld();
+      showToast(`Cerca removida do Hectare (${ha.hc + 1},${ha.hr + 1}).`);
+      openModal('livestock');
+    }
+
+    function makeSilageFromCorn(sacksToUse) {
+      if (!ownsItem('ensiladeira_forragem')) {
+        showToast('Compre a Ensiladeira na Loja primeiro.');
+        return;
+      }
+      const avail = state.silo.milho || 0;
+      const qty = Math.min(avail, sacksToUse);
+      if (qty < 1) {
+        showToast('Você precisa de pelo menos 1 saca de Milho no silo.');
+        return;
+      }
+      const cost = Math.round(qty * SILAGE_PROCESS_COST_PER_SACK);
+      if (state.money < cost) {
+        showToast(`Saldo insuficiente para picar silagem (${formatBRL(cost)}).`);
+        return;
+      }
+      state.money -= cost;
+      state.silo.milho = +(state.silo.milho - qty).toFixed(2);
+      const kgAdded = Math.round(qty * SILAGE_KG_PER_CORN_SACK);
+      state.silageKg = (state.silageKg || 0) + kgAdded;
+      updateHUD();
+      showToast(`Produziu ${kgAdded} kg de silagem com ${qty.toFixed(1)} sc de milho!`);
+      openModal('livestock');
+    }
+
+    function buyAnimal(type) {
+      const spec = LIVESTOCK_TYPES[type];
+      if (!spec) return;
+      const paddocks = getPasturePaddocks();
+      if (paddocks.length === 0) {
+        showToast('Cerque pelo menos 1 hectare de pasto antes de comprar gado.');
+        return;
+      }
+      ensureAtLeastOneActivePaddock();
+      const totalPastureHa = state.hectares.filter(h => h.owned && h.isPasture).length;
+      const maxUAWithSilage = totalPastureHa * UA_CAPACITY_PER_HA * ((state.silageKg || 0) >= 300 ? 1.8 : 1.0);
+      const nextUA = getTotalHerdUA() + (spec.startArrobas / 15);
+      if (nextUA > maxUAWithSilage + 0.1) {
+        showToast(`Lotação limite (${UA_CAPACITY_PER_HA} UA/ha)! Cerque mais pasto ou produza silagem.`);
+        return;
+      }
+      if (state.money < spec.buyPrice) {
+        showToast(`Saldo insuficiente (${formatBRL(spec.buyPrice)}).`);
+        return;
+      }
+      state.money -= spec.buyPrice;
+      state.cattle = state.cattle || [];
+      state.cattle.push({
+        id: Date.now() + Math.random(),
+        type: spec.id,
+        arrobas: spec.startArrobas,
+        ageMonths: spec.id === 'vaca' ? 24 : 14,
+        pregnantMonths: 0,
+        monthsSinceCalving: 12
+      });
+      updateHUD();
+      renderWorld();
+      showToast(`Comprou ${spec.name}!`);
+      openModal('livestock');
+    }
+
+    function sellAnimal(animalId, mode) {
+      const idx = (state.cattle || []).findIndex(a => a.id === animalId);
+      if (idx === -1) return;
+      const animal = state.cattle[idx];
+      const spec = LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES.boi;
+      if (mode === 'butcher' && animal.arrobas < spec.minButcherArrobas) {
+        showToast(`Peso mínimo para açougue: ${spec.minButcherArrobas}@.`);
+        return;
+      }
+      const pricePerArroba = mode === 'butcher' ? BUTCHER_PRICE_PER_ARROBA : LIVE_CATTLE_PRICE_PER_ARROBA;
+      const freight = ownsItem('caminhao_boiadeiro') ? 22 : 95;
+      const net = Math.max(0, Math.round(animal.arrobas * pricePerArroba - freight));
+
+      state.cattle.splice(idx, 1);
+      state.money += net;
+      updateHUD();
+      renderWorld();
+      showToast(`Vendeu (${mode === 'butcher' ? 'Açougue' : 'Vivo Criação'}) por ${formatBRL(net)} líquido!`);
+      openModal('livestock');
+    }
+
+    function sellAllMilk() {
+      const liters = state.milkLiters || 0;
+      if (liters < 10) {
+        showToast('Mínimo de 10 litros no tanque para coleta.');
+        return;
+      }
+      const freightPerL = ownsItem('caminhao_leite') ? 0.08 : 0.32;
+      const net = Math.round(liters * (MILK_PRICE_PER_LITER - freightPerL));
+      state.milkLiters = 0;
+      state.money += net;
+      updateHUD();
+      showToast(`Vendeu ${liters.toFixed(0)} L de leite por ${formatBRL(net)} líquido!`);
+      openModal('livestock');
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    renderCropSelector();
+    setTool('plow');
+    updateHUD();
+    resizeCanvas();
+    focusMainHectare();
+  </script>
+</body>
+</html>
