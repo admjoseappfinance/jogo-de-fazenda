@@ -856,6 +856,14 @@
     const BASE_CARE_HA = 540;
     const BASE_HARVEST_HA = 460;
 
+    // Durações reais em segundos por 1 hectare (64 blocos)
+    const WORK_SECONDS_PER_HA = {
+      plow: 6 * 60,     // 6 min/ha = 360s
+      plant: 10 * 60,   // 10 min/ha = 600s
+      care: 10 * 60,    // 10 min/ha = 600s
+      harvest: 8 * 60   // 8 min/ha = 480s
+    };
+
     const TRANSPORT_MODES = {
       camionete: {
         id: 'camionete',
@@ -1193,6 +1201,19 @@
       });
     }
 
+    function formatDurationSec(totalSec) {
+      const s = Math.max(1, Math.ceil(totalSec));
+      const mins = Math.floor(s / 60);
+      const rem = s % 60;
+      if (mins <= 0) return `${rem}s`;
+      return rem === 0 ? `${mins} min` : `${mins}m ${String(rem).padStart(2, '0')}s`;
+    }
+
+    function getWorkDurationSeconds(taskType, areaHa) {
+      const rate = WORK_SECONDS_PER_HA[taskType] || 300;
+      return Math.max(5, Math.round(areaHa * rate));
+    }
+
     function getSeasonInfo(monthIdx) {
       if (monthIdx >= 2 && monthIdx <= 4) return { id: 'outono', name: 'Outono', icon: '🍂', endsMonth: 'Mai', months: [2, 3, 4] };
       if (monthIdx >= 5 && monthIdx <= 7) return { id: 'inverno', name: 'Inverno', icon: '❄️', endsMonth: 'Ago', months: [5, 6, 7] };
@@ -1516,6 +1537,7 @@
         availableContracts: generateAvailableContracts(hectares, 0),
         useSilageToSavePasture: true,
         cattle: [],
+        activeTasks: [],
         hectares,
         tiles
       };
@@ -1659,6 +1681,20 @@
       return Boolean(state.activeContract && state.activeContract.haId === haId);
     }
 
+    function getBusyTileSet() {
+      const busy = new Set();
+      (state.activeTasks || []).forEach(task => {
+        if (Array.isArray(task.tileKeys)) {
+          task.tileKeys.forEach(k => busy.add(k));
+        }
+      });
+      return busy;
+    }
+
+    function hasHarvestTaskInProgress() {
+      return (state.activeTasks || []).some(t => t.type === 'harvest');
+    }
+
     function selectSingleOrBox(x1, y1, x2, y2) {
       const minX = Math.max(0, Math.min(x1, x2));
       const maxX = Math.min(MAP_PX - 0.01, Math.max(x1, x2));
@@ -1738,9 +1774,15 @@
     function prepareAreaActionConfirmation() {
       const crop = CROPS[selectedCropId];
       const month = state.monthIndex;
+      const busyTiles = getBusyTileSet();
 
       const coords = [];
+      let blockedCount = 0;
       selectedTileKeys.forEach((key) => {
+        if (busyTiles.has(key)) {
+          blockedCount++;
+          return;
+        }
         const [tx, ty] = key.split(',').map(Number);
         coords.push([tx, ty]);
       });
@@ -1759,6 +1801,7 @@
       let btnText = 'Confirmar';
       let boxesHtml = '';
       let subText = '';
+      let durationSec = 0;
 
       if (currentTool === 'plant') {
         eligible = coords.filter(([tx, ty]) => {
@@ -1772,29 +1815,32 @@
         const ownCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty)).length;
         const contractCount = eligible.length - ownCount;
         const areaHa = eligible.length / TILES_PER_HA;
+        durationSec = eligible.length > 0 ? getWorkDurationSeconds('plant', areaHa) : 0;
         const econ = getPlantAreaEconomics(crop, month, areaHa, false, state.transportMode);
         actionCost = econ.plantCost;
 
+        const busyNote = blockedCount > 0 ? ` · ⏳ ${blockedCount} bloco(s) já em serviço` : '';
+
         if (contractCount > 0 && ownCount === 0) {
           titleText = `Contrato: Semear ${crop.name} (${eligible.length} blocos)`;
-          btnText = 'Semear Talhão';
+          btnText = eligible.length ? 'Iniciar Serviço' : 'Sem Área Livre';
           boxesHtml = `
-            <div class="summary-box"><span>Insumo Semente (Reembolsado)</span><strong>${formatBRL(actionCost)}</strong></div>
+            <div class="summary-box"><span>Duração Real (${areaHa.toFixed(2)} ha)</span><strong>${formatDurationSec(durationSec)}</strong></div>
             <div class="summary-box"><span>Pagamento ao Concluir</span><strong class="profit-pos">${formatBRL(activeC.reward)}</strong></div>
           `;
-          subText = `Serviço no talhão de ${activeC.neighbor}. Ao completar 100%, recebe ${formatBRL(activeC.reward)}.`;
+          subText = `Insumo semente: ${formatBRL(actionCost)} (reembolsado). Ao concluir 100%, recebe ${formatBRL(activeC.reward)}${busyNote}.`;
         } else {
           titleText = `Plantar ${crop.name} (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
-          btnText = eligible.length ? 'Confirmar Plantio' : (activeC && activeC.task === 'plant' ? `Use ${CROPS[activeC.cropId].name}` : 'Are Antes');
+          btnText = eligible.length ? 'Iniciar Plantio' : (blockedCount > 0 ? 'Área Ocupada' : (activeC && activeC.task === 'plant' ? `Use ${CROPS[activeC.cropId].name}` : 'Are Antes'));
 
           const repeatCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty) && state.tiles[ty * TOTAL_TILE_COLS + tx].lastCropId === crop.id).length;
-          const rotNote = repeatCount > 0 ? ` · ⚠️ ${repeatCount} bloco(s) repetindo ${crop.name} (fadiga de solo)` : ' · ✅ Boa rotação';
+          const rotNote = repeatCount > 0 ? ` · ⚠️ ${repeatCount} bloco(s) repetindo ${crop.name}` : ' · ✅ Boa rotação';
 
           boxesHtml = `
-            <div class="summary-box"><span>Custo Plantio (${crop.name})</span><strong>${formatBRL(econ.plantCost)}</strong></div>
+            <div class="summary-box"><span>Tempo Estimado</span><strong>${formatDurationSec(durationSec)}</strong></div>
             <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
           `;
-          subText = `${econ.seasonLabel} (ideal: ${getBestSeasonNames(crop)})${rotNote} · Est. ${econ.sacks.toFixed(1)} sc · Ciclo total ${formatBRL(econ.totalCycleCost)}.`;
+          subText = `Custo ${formatBRL(econ.plantCost)} · ${econ.seasonLabel}${rotNote}${busyNote}.`;
         }
       } else if (currentTool === 'plow') {
         eligible = coords.filter(([tx, ty]) => {
@@ -1804,15 +1850,17 @@
           return true;
         });
         const areaHa = eligible.length / TILES_PER_HA;
+        durationSec = eligible.length > 0 ? getWorkDurationSeconds('plow', areaHa) : 0;
         actionCost = Math.round(areaHa * getPlowCostHa());
         titleText = `Arar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
-        btnText = eligible.length ? 'Confirmar' : 'Nada p/ Arar';
+        btnText = eligible.length ? 'Iniciar Aração' : (blockedCount > 0 ? 'Área Ocupada' : 'Nada p/ Arar');
 
+        const busyNote = blockedCount > 0 ? ` · ⏳ ${blockedCount} bloco(s) já em serviço` : '';
         boxesHtml = `
+          <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Operacional</span><strong>${formatBRL(actionCost)}</strong></div>
-          <div class="summary-box"><span>Caixa Após</span><strong class="${state.money - actionCost >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - actionCost)}</strong></div>
         `;
-        subText = `Custo atual: ${formatBRL(getPlowCostHa())}/ha (desgaste ${state.machineWear || 0}%).`;
+        subText = `Ritmo: 6 min/ha · Custo: ${formatBRL(getPlowCostHa())}/ha${busyNote}.`;
       } else if (currentTool === 'care') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
@@ -1822,15 +1870,17 @@
           return !t.cared && t.growthMonths < c.monthsToGrow;
         });
         const areaHa = eligible.length / TILES_PER_HA;
+        durationSec = eligible.length > 0 ? getWorkDurationSeconds('care', areaHa) : 0;
         actionCost = Math.round(areaHa * getCareCostHa());
         titleText = `Cuidar / Pulverizar (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
-        btnText = eligible.length ? 'Confirmar' : 'Nada p/ Cuidar';
+        btnText = eligible.length ? 'Iniciar Cuidado' : (blockedCount > 0 ? 'Área Ocupada' : 'Nada p/ Cuidar');
 
+        const busyNote = blockedCount > 0 ? ` · ⏳ ${blockedCount} bloco(s) já em serviço` : '';
         boxesHtml = `
+          <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Insumo/Máquina</span><strong>${formatBRL(actionCost)}</strong></div>
-          <div class="summary-box"><span>Efeito</span><strong class="profit-pos">Aplicado na Área</strong></div>
         `;
-        subText = `Custo atual: ${formatBRL(getCareCostHa())}/ha · No seu terreno acelera crescimento; no vizinho conclui o contrato.`;
+        subText = `Ritmo: 10 min/ha · Custo: ${formatBRL(getCareCostHa())}/ha${busyNote}.`;
       }
 
       const canAfford = eligible.length > 0 && state.money >= actionCost;
@@ -1838,7 +1888,8 @@
         type: currentTool,
         cropId: crop.id,
         coords: eligible,
-        cost: actionCost
+        cost: actionCost,
+        durationSec
       };
 
       document.getElementById('confirmTitle').textContent = titleText;
@@ -1861,66 +1912,218 @@
         if (!ha || ha.owned || state.money < ha.price) return;
         state.money -= ha.price;
         ha.owned = true;
+        clearSelection();
+        updateHUD();
+        renderWorld();
         showToast(`Comprou Hectare (${ha.hc + 1},${ha.hr + 1})!`);
-      } else if (act.type === 'plow') {
-        if (!act.coords.length || state.money < act.cost) return;
-        state.money -= act.cost;
-        act.coords.forEach(([tx, ty]) => {
+        return;
+      }
+
+      if (!act.coords || !act.coords.length) {
+        showToast('Nenhum bloco válido e livre selecionado.');
+        return;
+      }
+
+      if (state.money < act.cost) {
+        showToast('Saldo insuficiente para iniciar o serviço.');
+        return;
+      }
+
+      const busyTiles = getBusyTileSet();
+      const freeCoords = act.coords.filter(([tx, ty]) => !busyTiles.has(`${tx},${ty}`));
+      if (freeCoords.length === 0) {
+        showToast('Esses blocos já estão com serviço em andamento!');
+        return;
+      }
+
+      const areaHa = freeCoords.length / TILES_PER_HA;
+      const durationSec = getWorkDurationSeconds(act.type, areaHa);
+      const scaledCost = Math.round(act.cost * (freeCoords.length / act.coords.length));
+
+      state.money -= scaledCost;
+      state.activeTasks = state.activeTasks || [];
+      state.activeTasks.push({
+        id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        type: act.type,
+        cropId: act.cropId || null,
+        tileKeys: freeCoords.map(([tx, ty]) => `${tx},${ty}`),
+        totalSeconds: durationSec,
+        remainingSeconds: durationSec,
+        costPaid: scaledCost
+      });
+
+      const labelMap = { plow: 'Aração', plant: 'Plantio', care: 'Cuidado' };
+      clearSelection();
+      updateHUD();
+      renderWorld();
+      showToast(`⏳ ${labelMap[act.type] || 'Serviço'} iniciado (${formatDurationSec(durationSec)})`);
+    }
+
+    function finalizeCompletedTask(task) {
+      const coords = (task.tileKeys || []).map(k => k.split(',').map(Number));
+
+      if (task.type === 'plow') {
+        coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (!tile) return;
           tile.state = 'plowed';
           tile.cropId = null;
           tile.growthMonths = 0;
           tile.cared = false;
         });
-        addMachineWear(Math.max(1, Math.round(act.coords.length / 24)));
-        showToast(`Arou ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
-      } else if (act.type === 'plant') {
-        if (!act.coords.length || state.money < act.cost) return;
-        state.money -= act.cost;
-        act.coords.forEach(([tx, ty]) => {
+        addMachineWear(Math.max(1, Math.round(coords.length / 24)));
+        showToast(`✅ Aração concluída (${coords.length} blocos)!`);
+      } else if (task.type === 'plant') {
+        coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (!tile) return;
           const hc = Math.floor(tx / SUB_SIZE);
           const hr = Math.floor(ty / SUB_SIZE);
           const isContract = isContractHectare(hr * HA_COLS + hc);
           if (!isContract) {
-            const sameAsLast = tile.lastCropId === act.cropId;
+            const sameAsLast = tile.lastCropId === task.cropId;
             tile.monocultureCount = sameAsLast ? ((tile.monocultureCount || 0) + 1) : 0;
-            tile.lastCropId = act.cropId;
+            tile.lastCropId = task.cropId;
           }
           tile.state = 'planted';
-          tile.cropId = act.cropId;
+          tile.cropId = task.cropId;
           tile.growthMonths = 0;
           tile.cared = false;
         });
-        addMachineWear(Math.max(1, Math.round(act.coords.length / 36)));
-        showToast(`Semeou ${CROPS[act.cropId].name} (${act.coords.length} blocos)!`);
-      } else if (act.type === 'care') {
-        if (!act.coords.length || state.money < act.cost) return;
-        state.money -= act.cost;
-        act.coords.forEach(([tx, ty]) => {
+        addMachineWear(Math.max(1, Math.round(coords.length / 36)));
+        showToast(`✅ Plantio de ${CROPS[task.cropId]?.name || 'cultura'} concluído!`);
+      } else if (task.type === 'care') {
+        coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (!tile) return;
           if (tile.state === 'planted' && tile.cropId) {
             const c = CROPS[tile.cropId];
             tile.cared = true;
             tile.growthMonths = Math.min(c.monthsToGrow, tile.growthMonths + 1);
           }
         });
-        addMachineWear(Math.max(1, Math.round(act.coords.length / 28)));
-        showToast(`Aplicou cuidado em ${act.coords.length} bloco(s)!`);
+        addMachineWear(Math.max(1, Math.round(coords.length / 28)));
+        showToast(`✅ Cuidado aplicado em ${coords.length} bloco(s)!`);
+      } else if (task.type === 'harvest') {
+        const wearFactor = Math.max(0.75, 1 - ((state.machineWear || 0) / 250));
+        const limeBonus = ownsItem('calcaria_adubo') ? 1.15 : 1.0;
+        const sacksAdded = { soja: 0, milho: 0, trigo: 0, canola: 0, sorgo: 0, aveia: 0 };
+        let ownHarvestedCount = 0;
+
+        coords.forEach(([tx, ty]) => {
+          const hc = Math.floor(tx / SUB_SIZE);
+          const hr = Math.floor(ty / SUB_SIZE);
+          const ha = state.hectares[hr * HA_COLS + hc];
+          const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (!tile || !tile.cropId) return;
+          const crop = CROPS[tile.cropId];
+          if (!crop) return;
+          const isContract = isContractHectare(ha.id) && state.activeContract?.task === 'harvest';
+
+          if (!isContract) {
+            ownHarvestedCount++;
+            const sMult = getCropSeasonMultiplier(crop, state.monthIndex).mult;
+            const rotPenalty = (tile.monocultureCount && tile.monocultureCount > 0)
+              ? Math.max(0.72, 1 - tile.monocultureCount * (ownsItem('calcaria_adubo') ? 0.05 : 0.10))
+              : 1.0;
+            const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * sMult * limeBonus * rotPenalty * wearFactor;
+            if (sacksAdded[crop.id] === undefined) sacksAdded[crop.id] = 0;
+            sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
+          }
+
+          tile.state = 'plowed';
+          tile.cropId = null;
+          tile.growthMonths = 0;
+          tile.cared = false;
+        });
+
+        addMachineWear(Math.max(1, Math.round(coords.length / 20)));
+
+        Object.keys(sacksAdded).forEach((cid) => {
+          state.silo[cid] = +((state.silo[cid] || 0) + sacksAdded[cid]).toFixed(2);
+        });
+
+        if (ownHarvestedCount > 0) {
+          let loanChargedOnHarvest = 0;
+          if (state.loans.length > 0) {
+            const remainingLoans = [];
+            state.loans.forEach((loan) => {
+              const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
+              loanChargedOnHarvest += pay;
+              const nextBal = loan.remainingBalance - pay;
+              const nextInstLeft = loan.installmentsLeft - 1;
+              if (nextBal > 0 && nextInstLeft > 0) {
+                remainingLoans.push({
+                  ...loan,
+                  remainingBalance: nextBal,
+                  installmentsLeft: nextInstLeft
+                });
+              }
+            });
+            state.loans = remainingLoans;
+            state.money -= loanChargedOnHarvest;
+          }
+
+          if (Array.isArray(state.leasedMachines) && state.leasedMachines.length > 0) {
+            const stillLeased = [];
+            state.leasedMachines.forEach((lease) => {
+              const fee = lease.rentPerHarvest || 0;
+              if (state.money >= fee) {
+                state.money -= fee;
+              }
+              const left = (lease.harvestsLeft || 1) - 1;
+              if (left > 0) {
+                stillLeased.push({ ...lease, harvestsLeft: left });
+              }
+            });
+            state.leasedMachines = stillLeased;
+          }
+        }
+
+        const totalSc = Object.values(sacksAdded).reduce((a, b) => a + b, 0);
+        showToast(`✅ Colheita concluída (${totalSc.toFixed(1)} sc p/ Silo)!`);
       }
 
-      clearSelection();
       evaluateActiveContractProgress();
-      updateHUD();
-      renderWorld();
+    }
+
+    function tickBackgroundWork(elapsedSec = 1) {
+      if (!Array.isArray(state.activeTasks) || state.activeTasks.length === 0) return;
+
+      let anyCompleted = false;
+      const stillRunning = [];
+
+      state.activeTasks.forEach(task => {
+        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - elapsedSec);
+        if (task.remainingSeconds <= 0) {
+          finalizeCompletedTask(task);
+          anyCompleted = true;
+        } else {
+          stillRunning.push(task);
+        }
+      });
+
+      state.activeTasks = stillRunning;
+      if (anyCompleted) {
+        updateHUD();
+        renderWorld();
+      }
     }
 
     function triggerInstantHarvestAll() {
       setTool('harvest');
+      if (hasHarvestTaskInProgress()) {
+        const hTask = state.activeTasks.find(t => t.type === 'harvest');
+        showToast(`⏳ Colheita já em andamento (${formatDurationSec(hTask?.remainingSeconds || 0)} restantes).`);
+        return;
+      }
+
+      const busyTiles = getBusyTileSet();
       const ripeTiles = [];
 
       for (let ty = 0; ty < TOTAL_TILE_ROWS; ty++) {
         for (let tx = 0; tx < TOTAL_TILE_COLS; tx++) {
+          if (busyTiles.has(`${tx},${ty}`)) continue;
           const hc = Math.floor(tx / SUB_SIZE);
           const hr = Math.floor(ty / SUB_SIZE);
           const ha = state.hectares[hr * HA_COLS + hc];
@@ -1936,99 +2139,36 @@
       }
 
       if (ripeTiles.length === 0) {
-        showToast('Nenhuma lavoura madura pronta para colher agora.');
+        showToast('Nenhuma lavoura madura disponível para colher agora.');
         return;
       }
 
-      const wearFactor = Math.max(0.75, 1 - ((state.machineWear || 0) / 250));
-      const limeBonus = ownsItem('calcaria_adubo') ? 1.15 : 1.0;
       const harvestRateHa = getHarvestCostHa();
-      let harvestCostTotal = 0;
-      const sacksAdded = { soja: 0, milho: 0, trigo: 0, canola: 0, sorgo: 0, aveia: 0 };
-      let ownHarvestedCount = 0;
-
-      ripeTiles.forEach(({ crop, tile, isContract }) => {
-        harvestCostTotal += harvestRateHa / TILES_PER_HA;
-        if (!isContract) {
-          ownHarvestedCount++;
-          const sMult = getCropSeasonMultiplier(crop, state.monthIndex).mult;
-          const rotPenalty = (tile.monocultureCount && tile.monocultureCount > 0)
-            ? Math.max(0.72, 1 - tile.monocultureCount * (ownsItem('calcaria_adubo') ? 0.05 : 0.10))
-            : 1.0;
-          const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * sMult * limeBonus * rotPenalty * wearFactor;
-          if (sacksAdded[crop.id] === undefined) sacksAdded[crop.id] = 0;
-          sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
-        }
-      });
-
-      addMachineWear(Math.max(1, Math.round(ripeTiles.length / 20)));
-
-      const costInt = Math.round(harvestCostTotal);
+      const costInt = Math.round(ripeTiles.length * (harvestRateHa / TILES_PER_HA));
       if (state.money < costInt) {
         showToast(`Saldo insuficiente para colher (${formatBRL(costInt)})!`);
         return;
       }
 
+      const areaHa = ripeTiles.length / TILES_PER_HA;
+      const durationSec = getWorkDurationSeconds('harvest', areaHa);
+
       state.money -= costInt;
-      Object.keys(sacksAdded).forEach((cid) => {
-        state.silo[cid] = +(state.silo[cid] + sacksAdded[cid]).toFixed(2);
+      state.activeTasks = state.activeTasks || [];
+      state.activeTasks.push({
+        id: `task_harvest_${Date.now()}`,
+        type: 'harvest',
+        cropId: null,
+        tileKeys: ripeTiles.map(({ tx, ty }) => `${tx},${ty}`),
+        totalSeconds: durationSec,
+        remainingSeconds: durationSec,
+        costPaid: costInt
       });
 
-      ripeTiles.forEach(({ tx, ty }) => {
-        const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
-        tile.state = 'plowed';
-        tile.cropId = null;
-        tile.growthMonths = 0;
-        tile.cared = false;
-      });
-
-      if (ownHarvestedCount > 0) {
-        let loanChargedOnHarvest = 0;
-        if (state.loans.length > 0) {
-          const remainingLoans = [];
-          state.loans.forEach((loan) => {
-            const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
-            loanChargedOnHarvest += pay;
-            const nextBal = loan.remainingBalance - pay;
-            const nextInstLeft = loan.installmentsLeft - 1;
-            if (nextBal > 0 && nextInstLeft > 0) {
-              remainingLoans.push({
-                ...loan,
-                remainingBalance: nextBal,
-                installmentsLeft: nextInstLeft
-              });
-            }
-          });
-          state.loans = remainingLoans;
-          state.money -= loanChargedOnHarvest;
-        }
-
-        let leaseChargedOnHarvest = 0;
-        if (Array.isArray(state.leasedMachines) && state.leasedMachines.length > 0) {
-          const stillLeased = [];
-          state.leasedMachines.forEach((lease) => {
-            const fee = lease.rentPerHarvest || 0;
-            if (state.money >= fee) {
-              state.money -= fee;
-              leaseChargedOnHarvest += fee;
-            }
-            const left = (lease.harvestsLeft || 1) - 1;
-            if (left > 0) {
-              stillLeased.push({ ...lease, harvestsLeft: left });
-            }
-          });
-          state.leasedMachines = stillLeased;
-        }
-      }
-
-      const totalSc = Object.values(sacksAdded).reduce((a, b) => a + b, 0);
       clearSelection();
-      evaluateActiveContractProgress();
       updateHUD();
       renderWorld();
-      if (totalSc > 0) {
-        showToast(`Colheu ${totalSc.toFixed(1)} sc p/ Silo · Custo colheita: ${formatBRL(costInt)}`);
-      }
+      showToast(`⏳ Colheita iniciada (${formatDurationSec(durationSec)} · custo ${formatBRL(costInt)})`);
     }
 
     function drawCropWithLevelBar(x, y, size, crop, growthMonths, cared) {
@@ -2159,6 +2299,21 @@
           }
         }
       }
+
+      // Destaque discreto de blocos em trabalho ativo (sem alterar layout)
+      (state.activeTasks || []).forEach((task) => {
+        (task.tileKeys || []).forEach((key) => {
+          const [tx, ty] = key.split(',').map(Number);
+          if (tx < minTx || tx > maxTx || ty < minTy || ty > maxTy) return;
+          const x = tx * TILE_PX;
+          const y = ty * TILE_PX;
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+          ctx.fillRect(x, y, TILE_PX, TILE_PX);
+          ctx.strokeStyle = 'rgba(224, 242, 254, 0.72)';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.strokeRect(x + 1 / zoom, y + 1 / zoom, TILE_PX - 2 / zoom, TILE_PX - 2 / zoom);
+        });
+      });
 
       selectedTileKeys.forEach((key) => {
         const [tx, ty] = key.split(',').map(Number);
@@ -2441,11 +2596,13 @@
       cropBar.classList.toggle('visible', tool === 'plant');
 
       const crop = CROPS[selectedCropId];
+      const activeCount = (state.activeTasks || []).length;
+      const activeSuffix = activeCount > 0 ? ` · ${activeCount} em andamento` : '';
       const hints = {
-        plow: `Arar: ${formatBRL(getPlowCostHa())}/ha (igual p/ todas culturas)`,
-        plant: `Plantar ${crop.name}: ${formatBRL(crop.plantCostHa)}/ha`,
-        care: `Cuidar: ${formatBRL(getCareCostHa())}/ha (igual p/ todas culturas)`,
-        harvest: 'Colher Tudo: colhe todas as lavouras prontas para o Silo'
+        plow: `Arar: ${formatBRL(getPlowCostHa())}/ha · 6 min/ha${activeSuffix}`,
+        plant: `Plantar ${crop.name}: ${formatBRL(crop.plantCostHa)}/ha · 10 min/ha${activeSuffix}`,
+        care: `Cuidar: ${formatBRL(getCareCostHa())}/ha · 10 min/ha${activeSuffix}`,
+        harvest: `Colher Tudo: 8 min/ha p/ o Silo${activeSuffix}`
       };
       document.getElementById('hintBar').textContent = hints[tool] || '';
 
@@ -2658,10 +2815,11 @@
       if (type === 'help') {
         title.textContent = '❓ Como Jogar & Regras';
         body.innerHTML = `
-          <p><strong>1. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
-          <p><strong>2. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por 2 colheitas (cobrado na colheita) ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
-          <p><strong>3. Contratos Estilo Farming Simulator:</strong> Em <strong>💾</strong> você aceita serviços em talhões vizinhos (arar, semear, pulverizar ou colher). O terreno é liberado no mapa para você trabalhar e paga quando atingir 100%.</p>
-          <p><strong>4. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
+          <p><strong>1. Tempo Real por Hectare:</strong> Arar leva <strong>6 min/ha</strong>, Plantar <strong>10 min/ha</strong>, Cuidar <strong>10 min/ha</strong> e Colher <strong>8 min/ha</strong> (proporcional à área selecionada, rodando em segundo plano sem travar o mapa).</p>
+          <p><strong>2. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
+          <p><strong>3. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por 2 colheitas (cobrado na colheita) ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
+          <p><strong>4. Contratos Estilo Farming Simulator:</strong> Em <strong>💾</strong> você aceita serviços em talhões vizinhos (arar, semear, pulverizar ou colher). O terreno é liberado no mapa para você trabalhar e paga quando atingir 100%.</p>
+          <p><strong>5. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
         `;
       } else if (type === 'shop') {
         if (tabParam) activeShopTab = tabParam;
@@ -3055,8 +3213,26 @@
           </div>
         ` : '';
 
+        const runningTasksHtml = (state.activeTasks || []).length > 0
+          ? (state.activeTasks || []).map((t) => {
+              const tName = { plow: 'Aração', plant: 'Plantio', care: 'Cuidado', harvest: 'Colheita' }[t.type] || 'Serviço';
+              const haQty = ((t.tileKeys || []).length / TILES_PER_HA).toFixed(2);
+              return `
+                <div class="machine-card">
+                  <div class="machine-info">
+                    <strong>⏳ ${tName} em andamento (${haQty} ha)</strong>
+                    <small>Tempo restante: <strong>${formatDurationSec(t.remainingSeconds)}</strong> de ${formatDurationSec(t.totalSeconds)}</small>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : `<p class="confirm-sub">Nenhum trabalho temporizado rodando no momento.</p>`;
+
         body.innerHTML = `
-          <h4 style="margin:4px 0 6px;">Contratos em Terrenos Vizinhos</h4>
+          <h4 style="margin:4px 0 6px;">Serviços em Andamento (Tempo Real)</h4>
+          ${runningTasksHtml}
+
+          <h4 style="margin:10px 0 6px;">Contratos em Terrenos Vizinhos</h4>
           <p class="confirm-sub">Trabalhe em talhões de vizinhos (arar, semear, pulverizar ou colher) usando suas máquinas para lucrar mais. O pagamento cai na hora ao completar <strong>100%</strong> da área.</p>
           ${activeHtml}
           ${state.availableContracts.map((srv) => {
@@ -3374,6 +3550,7 @@
         return;
       }
       state = JSON.parse(raw);
+      if (!Array.isArray(state.activeTasks)) state.activeTasks = [];
       clearSelection();
       updateHUD();
       renderWorld();
@@ -3662,6 +3839,10 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
+
+    setInterval(() => {
+      tickBackgroundWork(1);
+    }, 1000);
 
     window.addEventListener('resize', resizeCanvas);
 
