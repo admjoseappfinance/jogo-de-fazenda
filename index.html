@@ -992,37 +992,13 @@
       }
     ];
 
-    const SERVICE_CONTRACTS = [
-      {
-        id: 'srv_soja',
-        title: 'Entrega de Soja p/ Cooperativa',
-        cropId: 'soja',
-        requiredSacks: 25,
-        reward: 8200,
-        requiredItem: 'trator_aracao',
-        bonusFactor: 1.25,
-        desc: 'Exige 25 sacas de Soja no silo. Ao avançar o mês, entrega as sacas e paga R$ 8.200 (+25% com Trator).'
-      },
-      {
-        id: 'srv_milho',
-        title: 'Fornecimento de Milho p/ Ração',
-        cropId: 'milho',
-        requiredSacks: 40,
-        reward: 9500,
-        requiredItem: 'colheitadeira_graos',
-        bonusFactor: 1.30,
-        desc: 'Exige 40 sacas de Milho no silo. Ao avançar o mês, entrega as sacas e paga R$ 9.500 (+30% com Colheitadeira).'
-      },
-      {
-        id: 'srv_trigo',
-        title: 'Remessa de Trigo p/ Moinho',
-        cropId: 'trigo',
-        requiredSacks: 30,
-        reward: 8800,
-        requiredItem: 'caminhao_proprio',
-        bonusFactor: 1.25,
-        desc: 'Exige 30 sacas de Trigo no silo. Ao avançar o mês, entrega as sacas e paga R$ 8.800 (+25% com Caminhão).'
-      }
+    const NEIGHBOR_NAMES = [
+      'Fazenda Santa Clara',
+      'Sítio Boa Vista',
+      'Granja São José',
+      'Agropecuária Horizonte',
+      'Estância Bela Vista',
+      'Fazenda Três Irmãos'
     ];
 
     const FENCE_COST_HA = 3200;
@@ -1322,6 +1298,158 @@
       };
     }
 
+    function generateAvailableContracts(hectaresList, monthIdx = 0) {
+      const candidates = hectaresList.filter(h => !h.owned);
+      if (candidates.length === 0) return [];
+      const sorted = [...candidates].sort((a, b) => {
+        const da = Math.abs(a.hc - 4) + Math.abs(a.hr - 4);
+        const db = Math.abs(b.hc - 4) + Math.abs(b.hr - 4);
+        return da - db;
+      });
+      const pool = sorted.slice(0, Math.min(18, sorted.length));
+      const picked = [];
+      const usedIds = new Set();
+      const tasks = ['plow', 'plant', 'care', 'harvest'];
+      const seasonCrops = CROP_LIST.filter(c => c.bestSeasons.includes(getSeasonInfo(monthIdx).id));
+      const cropPool = seasonCrops.length ? seasonCrops : CROP_LIST;
+
+      for (let i = 0; i < 3 && pool.length > 0; i++) {
+        let ha = pool[Math.floor(Math.random() * pool.length)];
+        let tries = 0;
+        while (usedIds.has(ha.id) && tries < 12) {
+          ha = pool[Math.floor(Math.random() * pool.length)];
+          tries++;
+        }
+        usedIds.add(ha.id);
+
+        const task = tasks[(i + Math.floor(Math.random() * tasks.length)) % tasks.length];
+        const crop = cropPool[Math.floor(Math.random() * cropPool.length)];
+        const neighbor = NEIGHBOR_NAMES[(ha.id + monthIdx + i) % NEIGHBOR_NAMES.length];
+
+        let title = '';
+        let reward = 0;
+        let desc = '';
+
+        if (task === 'plow') {
+          title = `Arar Talhão (${ha.hc + 1},${ha.hr + 1})`;
+          reward = 1450;
+          desc = `${neighbor}: Prepare toda a terra (1 ha) do talhão (${ha.hc + 1},${ha.hr + 1}) usando a ferramenta Arar.`;
+        } else if (task === 'plant') {
+          title = `Semear ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
+          reward = Math.round(crop.plantCostHa + 1350);
+          desc = `${neighbor}: Semeie ${crop.name} em todo o talhão (${ha.hc + 1},${ha.hr + 1}). O contrato reembolsa a semente e paga o serviço.`;
+        } else if (task === 'care') {
+          title = `Pulverizar ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
+          reward = 1750;
+          desc = `${neighbor}: Aplique defensivo/adubo com Cuidar em todo o talhão (${ha.hc + 1},${ha.hr + 1}).`;
+        } else {
+          title = `Colher ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
+          reward = 2150;
+          desc = `${neighbor}: Colha a lavoura madura do talhão (${ha.hc + 1},${ha.hr + 1}) com Colher Tudo (os grãos vão p/ o vizinho).`;
+        }
+
+        picked.push({
+          id: `fs_${Date.now()}_${i}_${ha.id}`,
+          task,
+          cropId: crop.id,
+          haId: ha.id,
+          hc: ha.hc,
+          hr: ha.hr,
+          neighbor,
+          title,
+          reward,
+          desc,
+          progress: 0
+        });
+      }
+      return picked;
+    }
+
+    function setupContractField(contract) {
+      const ha = state.hectares.find(h => h.id === contract.haId);
+      if (!ha) return;
+      for (let ly = 0; ly < SUB_SIZE; ly++) {
+        for (let lx = 0; lx < SUB_SIZE; lx++) {
+          const tx = ha.hc * SUB_SIZE + lx;
+          const ty = ha.hr * SUB_SIZE + ly;
+          const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (contract.task === 'plow') {
+            t.state = 'raw';
+            t.cropId = null;
+            t.growthMonths = 0;
+            t.cared = false;
+          } else if (contract.task === 'plant') {
+            t.state = 'plowed';
+            t.cropId = null;
+            t.growthMonths = 0;
+            t.cared = false;
+          } else if (contract.task === 'care') {
+            t.state = 'planted';
+            t.cropId = contract.cropId;
+            t.growthMonths = 1;
+            t.cared = false;
+          } else if (contract.task === 'harvest') {
+            const c = CROPS[contract.cropId] || CROPS.soja;
+            t.state = 'planted';
+            t.cropId = c.id;
+            t.growthMonths = c.monthsToGrow;
+            t.cared = true;
+          }
+        }
+      }
+    }
+
+    function clearContractField(haId) {
+      const ha = state.hectares.find(h => h.id === haId);
+      if (!ha || ha.owned) return;
+      for (let ly = 0; ly < SUB_SIZE; ly++) {
+        for (let lx = 0; lx < SUB_SIZE; lx++) {
+          const tx = ha.hc * SUB_SIZE + lx;
+          const ty = ha.hr * SUB_SIZE + ly;
+          state.tiles[ty * TOTAL_TILE_COLS + tx] = {
+            state: 'raw',
+            cropId: null,
+            growthMonths: 0,
+            cared: false,
+            lastCropId: null,
+            monocultureCount: 0
+          };
+        }
+      }
+    }
+
+    function evaluateActiveContractProgress() {
+      const c = state.activeContract;
+      if (!c) return;
+      const ha = state.hectares.find(h => h.id === c.haId);
+      if (!ha) return;
+
+      let done = 0;
+      for (let ly = 0; ly < SUB_SIZE; ly++) {
+        for (let lx = 0; lx < SUB_SIZE; lx++) {
+          const tx = ha.hc * SUB_SIZE + lx;
+          const ty = ha.hr * SUB_SIZE + ly;
+          const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (c.task === 'plow' && t.state === 'plowed') done++;
+          else if (c.task === 'plant' && t.state === 'planted' && t.cropId === c.cropId) done++;
+          else if (c.task === 'care' && t.state === 'planted' && t.cared) done++;
+          else if (c.task === 'harvest' && t.state === 'plowed' && !t.cropId) done++;
+        }
+      }
+
+      c.progress = Math.round((done / TILES_PER_HA) * 100);
+      if (done >= TILES_PER_HA) {
+        const payout = c.reward;
+        state.money += payout;
+        clearContractField(c.haId);
+        state.activeContract = null;
+        state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
+        updateHUD();
+        renderWorld();
+        showToast(`✅ Contrato concluído (100%)! Recebeu ${formatBRL(payout)} de ${c.neighbor}.`);
+      }
+    }
+
     function createInitialState() {
       const hectares = [];
       for (let hr = 0; hr < HA_ROWS; hr++) {
@@ -1385,6 +1513,7 @@
         milkLiters: 0,
         machineWear: 12,
         activeContract: null,
+        availableContracts: generateAvailableContracts(hectares, 0),
         useSilageToSavePasture: true,
         cattle: [],
         hectares,
@@ -1526,6 +1655,10 @@
       renderWorld();
     }
 
+    function isContractHectare(haId) {
+      return Boolean(state.activeContract && state.activeContract.haId === haId);
+    }
+
     function selectSingleOrBox(x1, y1, x2, y2) {
       const minX = Math.max(0, Math.min(x1, x2));
       const maxX = Math.min(MAP_PX - 0.01, Math.max(x1, x2));
@@ -1541,14 +1674,14 @@
         const hc = Math.floor(tx / SUB_SIZE);
         const hr = Math.floor(ty / SUB_SIZE);
         const ha = state.hectares[hr * HA_COLS + hc];
-        if (!ha.owned) {
+        if (!ha.owned && !isContractHectare(ha.id)) {
           selectedTileKeys.clear();
           selectedHaIdToBuy = ha.id;
           prepareBuyHectareConfirmation(ha);
           renderWorld();
           return;
         }
-        if (ha.isPasture) {
+        if (ha.owned && ha.isPasture) {
           selectedTileKeys.clear();
           selectedHaIdToBuy = null;
           openModal('livestock');
@@ -1570,7 +1703,7 @@
           const hc = Math.floor(tx / SUB_SIZE);
           const hr = Math.floor(ty / SUB_SIZE);
           const ha = state.hectares[hr * HA_COLS + hc];
-          if (ha.owned && !ha.isPasture) {
+          if ((ha.owned && !ha.isPasture) || isContractHectare(ha.id)) {
             selectedTileKeys.add(`${tx},${ty}`);
           }
         }
@@ -1612,6 +1745,14 @@
         coords.push([tx, ty]);
       });
 
+      const activeC = state.activeContract;
+      const isContractTile = (tx, ty) => {
+        if (!activeC) return false;
+        const hc = Math.floor(tx / SUB_SIZE);
+        const hr = Math.floor(ty / SUB_SIZE);
+        return (hr * HA_COLS + hc) === activeC.haId;
+      };
+
       let eligible = [];
       let actionCost = 0;
       let titleText = '';
@@ -1620,50 +1761,76 @@
       let subText = '';
 
       if (currentTool === 'plant') {
-        eligible = coords.filter(([tx, ty]) => state.tiles[ty * TOTAL_TILE_COLS + tx].state === 'plowed');
+        eligible = coords.filter(([tx, ty]) => {
+          const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (t.state !== 'plowed') return false;
+          if (isContractTile(tx, ty)) {
+            return activeC.task === 'plant' && crop.id === activeC.cropId;
+          }
+          return true;
+        });
+        const ownCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty)).length;
+        const contractCount = eligible.length - ownCount;
         const areaHa = eligible.length / TILES_PER_HA;
         const econ = getPlantAreaEconomics(crop, month, areaHa, false, state.transportMode);
         actionCost = econ.plantCost;
-        titleText = `Plantar ${crop.name} (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
-        btnText = eligible.length ? 'Confirmar Plantio' : 'Are Antes';
 
-        const repeatCount = eligible.filter(([tx, ty]) => state.tiles[ty * TOTAL_TILE_COLS + tx].lastCropId === crop.id).length;
-        const rotNote = repeatCount > 0 ? ` · ⚠️ ${repeatCount} bloco(s) repetindo ${crop.name} (fadiga de solo)` : ' · ✅ Boa rotação';
+        if (contractCount > 0 && ownCount === 0) {
+          titleText = `Contrato: Semear ${crop.name} (${eligible.length} blocos)`;
+          btnText = 'Semear Talhão';
+          boxesHtml = `
+            <div class="summary-box"><span>Insumo Semente (Reembolsado)</span><strong>${formatBRL(actionCost)}</strong></div>
+            <div class="summary-box"><span>Pagamento ao Concluir</span><strong class="profit-pos">${formatBRL(activeC.reward)}</strong></div>
+          `;
+          subText = `Serviço no talhão de ${activeC.neighbor}. Ao completar 100%, recebe ${formatBRL(activeC.reward)}.`;
+        } else {
+          titleText = `Plantar ${crop.name} (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
+          btnText = eligible.length ? 'Confirmar Plantio' : (activeC && activeC.task === 'plant' ? `Use ${CROPS[activeC.cropId].name}` : 'Are Antes');
 
-        boxesHtml = `
-          <div class="summary-box"><span>Custo Plantio (${crop.name})</span><strong>${formatBRL(econ.plantCost)}</strong></div>
-          <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
-        `;
-        subText = `${econ.seasonLabel} (ideal: ${getBestSeasonNames(crop)})${rotNote} · Est. ${econ.sacks.toFixed(1)} sc · Ciclo total ${formatBRL(econ.totalCycleCost)}.`;
+          const repeatCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty) && state.tiles[ty * TOTAL_TILE_COLS + tx].lastCropId === crop.id).length;
+          const rotNote = repeatCount > 0 ? ` · ⚠️ ${repeatCount} bloco(s) repetindo ${crop.name} (fadiga de solo)` : ' · ✅ Boa rotação';
+
+          boxesHtml = `
+            <div class="summary-box"><span>Custo Plantio (${crop.name})</span><strong>${formatBRL(econ.plantCost)}</strong></div>
+            <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
+          `;
+          subText = `${econ.seasonLabel} (ideal: ${getBestSeasonNames(crop)})${rotNote} · Est. ${econ.sacks.toFixed(1)} sc · Ciclo total ${formatBRL(econ.totalCycleCost)}.`;
+        }
       } else if (currentTool === 'plow') {
-        eligible = coords.filter(([tx, ty]) => state.tiles[ty * TOTAL_TILE_COLS + tx].state === 'raw');
+        eligible = coords.filter(([tx, ty]) => {
+          const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          if (t.state !== 'raw') return false;
+          if (isContractTile(tx, ty)) return activeC.task === 'plow';
+          return true;
+        });
         const areaHa = eligible.length / TILES_PER_HA;
         actionCost = Math.round(areaHa * getPlowCostHa());
         titleText = `Arar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
         btnText = eligible.length ? 'Confirmar' : 'Nada p/ Arar';
 
         boxesHtml = `
-          <div class="summary-box"><span>Custo p/ Arar</span><strong>${formatBRL(actionCost)}</strong></div>
+          <div class="summary-box"><span>Custo Operacional</span><strong>${formatBRL(actionCost)}</strong></div>
           <div class="summary-box"><span>Caixa Após</span><strong class="${state.money - actionCost >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - actionCost)}</strong></div>
         `;
-        subText = `Custo atual: ${formatBRL(getPlowCostHa())}/ha (inclui desgaste mecânico ${state.machineWear || 0}%).`;
+        subText = `Custo atual: ${formatBRL(getPlowCostHa())}/ha (desgaste ${state.machineWear || 0}%).`;
       } else if (currentTool === 'care') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
           if (t.state !== 'planted' || !t.cropId) return false;
+          if (isContractTile(tx, ty)) return activeC.task === 'care' && !t.cared;
           const c = CROPS[t.cropId];
           return !t.cared && t.growthMonths < c.monthsToGrow;
         });
         const areaHa = eligible.length / TILES_PER_HA;
         actionCost = Math.round(areaHa * getCareCostHa());
-        titleText = `Cuidar Área (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
+        titleText = `Cuidar / Pulverizar (${eligible.length} blocos · ${areaHa.toFixed(2)} ha)`;
         btnText = eligible.length ? 'Confirmar' : 'Nada p/ Cuidar';
 
         boxesHtml = `
-          <div class="summary-box"><span>Custo p/ Cuidar</span><strong>${formatBRL(actionCost)}</strong></div>
-          <div class="summary-box"><span>Efeito</span><strong class="profit-pos">+1 Mês & +Sacas</strong></div>
+          <div class="summary-box"><span>Custo Insumo/Máquina</span><strong>${formatBRL(actionCost)}</strong></div>
+          <div class="summary-box"><span>Efeito</span><strong class="profit-pos">Aplicado na Área</strong></div>
         `;
-        subText = `Custo atual: ${formatBRL(getCareCostHa())}/ha · Acelera o crescimento e aumenta a produção.`;
+        subText = `Custo atual: ${formatBRL(getCareCostHa())}/ha · No seu terreno acelera crescimento; no vizinho conclui o contrato.`;
       }
 
       const canAfford = eligible.length > 0 && state.money >= actionCost;
@@ -1712,16 +1879,21 @@
         state.money -= act.cost;
         act.coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
-          const sameAsLast = tile.lastCropId === act.cropId;
-          tile.monocultureCount = sameAsLast ? ((tile.monocultureCount || 0) + 1) : 0;
-          tile.lastCropId = act.cropId;
+          const hc = Math.floor(tx / SUB_SIZE);
+          const hr = Math.floor(ty / SUB_SIZE);
+          const isContract = isContractHectare(hr * HA_COLS + hc);
+          if (!isContract) {
+            const sameAsLast = tile.lastCropId === act.cropId;
+            tile.monocultureCount = sameAsLast ? ((tile.monocultureCount || 0) + 1) : 0;
+            tile.lastCropId = act.cropId;
+          }
           tile.state = 'planted';
           tile.cropId = act.cropId;
           tile.growthMonths = 0;
           tile.cared = false;
         });
         addMachineWear(Math.max(1, Math.round(act.coords.length / 36)));
-        showToast(`Plantou ${CROPS[act.cropId].name} por ${formatBRL(act.cost)}!`);
+        showToast(`Semeou ${CROPS[act.cropId].name} (${act.coords.length} blocos)!`);
       } else if (act.type === 'care') {
         if (!act.coords.length || state.money < act.cost) return;
         state.money -= act.cost;
@@ -1734,10 +1906,11 @@
           }
         });
         addMachineWear(Math.max(1, Math.round(act.coords.length / 28)));
-        showToast(`Cuidou de ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
+        showToast(`Aplicou cuidado em ${act.coords.length} bloco(s)!`);
       }
 
       clearSelection();
+      evaluateActiveContractProgress();
       updateHUD();
       renderWorld();
     }
@@ -1752,10 +1925,11 @@
           const hr = Math.floor(ty / SUB_SIZE);
           const ha = state.hectares[hr * HA_COLS + hc];
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
-          if (ha.owned && tile.state === 'planted' && tile.cropId) {
+          const isContract = isContractHectare(ha.id) && state.activeContract?.task === 'harvest';
+          if ((ha.owned || isContract) && tile.state === 'planted' && tile.cropId) {
             const c = CROPS[tile.cropId];
             if (tile.growthMonths >= c.monthsToGrow) {
-              ripeTiles.push({ tx, ty, tile, crop: c });
+              ripeTiles.push({ tx, ty, tile, crop: c, isContract });
             }
           }
         }
@@ -1771,16 +1945,20 @@
       const harvestRateHa = getHarvestCostHa();
       let harvestCostTotal = 0;
       const sacksAdded = { soja: 0, milho: 0, trigo: 0, canola: 0, sorgo: 0, aveia: 0 };
+      let ownHarvestedCount = 0;
 
-      ripeTiles.forEach(({ crop, tile }) => {
-        const sMult = getCropSeasonMultiplier(crop, state.monthIndex).mult;
-        const rotPenalty = (tile.monocultureCount && tile.monocultureCount > 0)
-          ? Math.max(0.72, 1 - tile.monocultureCount * (ownsItem('calcaria_adubo') ? 0.05 : 0.10))
-          : 1.0;
-        const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * sMult * limeBonus * rotPenalty * wearFactor;
-        if (sacksAdded[crop.id] === undefined) sacksAdded[crop.id] = 0;
-        sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
+      ripeTiles.forEach(({ crop, tile, isContract }) => {
         harvestCostTotal += harvestRateHa / TILES_PER_HA;
+        if (!isContract) {
+          ownHarvestedCount++;
+          const sMult = getCropSeasonMultiplier(crop, state.monthIndex).mult;
+          const rotPenalty = (tile.monocultureCount && tile.monocultureCount > 0)
+            ? Math.max(0.72, 1 - tile.monocultureCount * (ownsItem('calcaria_adubo') ? 0.05 : 0.10))
+            : 1.0;
+          const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * sMult * limeBonus * rotPenalty * wearFactor;
+          if (sacksAdded[crop.id] === undefined) sacksAdded[crop.id] = 0;
+          sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
+        }
       });
 
       addMachineWear(Math.max(1, Math.round(ripeTiles.length / 20)));
@@ -1804,51 +1982,51 @@
         tile.cared = false;
       });
 
-      let loanChargedOnHarvest = 0;
-      if (state.loans.length > 0) {
-        const remainingLoans = [];
-        state.loans.forEach((loan) => {
-          const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
-          loanChargedOnHarvest += pay;
-          const nextBal = loan.remainingBalance - pay;
-          const nextInstLeft = loan.installmentsLeft - 1;
-          if (nextBal > 0 && nextInstLeft > 0) {
-            remainingLoans.push({
-              ...loan,
-              remainingBalance: nextBal,
-              installmentsLeft: nextInstLeft
-            });
-          }
-        });
-        state.loans = remainingLoans;
-        state.money -= loanChargedOnHarvest;
-      }
+      if (ownHarvestedCount > 0) {
+        let loanChargedOnHarvest = 0;
+        if (state.loans.length > 0) {
+          const remainingLoans = [];
+          state.loans.forEach((loan) => {
+            const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
+            loanChargedOnHarvest += pay;
+            const nextBal = loan.remainingBalance - pay;
+            const nextInstLeft = loan.installmentsLeft - 1;
+            if (nextBal > 0 && nextInstLeft > 0) {
+              remainingLoans.push({
+                ...loan,
+                remainingBalance: nextBal,
+                installmentsLeft: nextInstLeft
+              });
+            }
+          });
+          state.loans = remainingLoans;
+          state.money -= loanChargedOnHarvest;
+        }
 
-      let leaseChargedOnHarvest = 0;
-      if (Array.isArray(state.leasedMachines) && state.leasedMachines.length > 0) {
-        const stillLeased = [];
-        state.leasedMachines.forEach((lease) => {
-          const fee = lease.rentPerHarvest || 0;
-          if (state.money >= fee) {
-            state.money -= fee;
-            leaseChargedOnHarvest += fee;
-          }
-          const left = (lease.harvestsLeft || 1) - 1;
-          if (left > 0) {
-            stillLeased.push({ ...lease, harvestsLeft: left });
-          }
-        });
-        state.leasedMachines = stillLeased;
+        let leaseChargedOnHarvest = 0;
+        if (Array.isArray(state.leasedMachines) && state.leasedMachines.length > 0) {
+          const stillLeased = [];
+          state.leasedMachines.forEach((lease) => {
+            const fee = lease.rentPerHarvest || 0;
+            if (state.money >= fee) {
+              state.money -= fee;
+              leaseChargedOnHarvest += fee;
+            }
+            const left = (lease.harvestsLeft || 1) - 1;
+            if (left > 0) {
+              stillLeased.push({ ...lease, harvestsLeft: left });
+            }
+          });
+          state.leasedMachines = stillLeased;
+        }
       }
 
       const totalSc = Object.values(sacksAdded).reduce((a, b) => a + b, 0);
       clearSelection();
+      evaluateActiveContractProgress();
       updateHUD();
       renderWorld();
-      const extraCharges = loanChargedOnHarvest + leaseChargedOnHarvest;
-      if (extraCharges > 0) {
-        showToast(`Colheu ${totalSc.toFixed(1)} sc · Cobranças safra (empréstimo/aluguel): ${formatBRL(extraCharges)}`);
-      } else {
+      if (totalSc > 0) {
         showToast(`Colheu ${totalSc.toFixed(1)} sc p/ Silo · Custo colheita: ${formatBRL(costInt)}`);
       }
     }
@@ -1936,11 +2114,12 @@
           const hr = Math.floor(ty / SUB_SIZE);
           const ha = state.hectares[hr * HA_COLS + hc];
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
+          const isContract = isContractHectare(ha.id);
 
-          if (!ha.owned) {
+          if (!ha.owned && !isContract) {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#4d7335' : '#466930';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
-          } else if (ha.isPasture) {
+          } else if (ha.owned && ha.isPasture) {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#79ba47' : '#6ead3e';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'raw') {
@@ -1997,6 +2176,7 @@
           const ha = state.hectares[hr * HA_COLS + hc];
           const hx = hc * HA_PX;
           const hy = hr * HA_PX;
+          const isContract = isContractHectare(ha.id);
 
           if (ha.owned && ha.isPasture) {
             const gLvl = typeof ha.grassLevel === 'number' ? ha.grassLevel : 100;
@@ -2042,9 +2222,20 @@
               ctx.fillText(statusTxt, hx + 13, hy + 21);
             }
           } else {
-            ctx.strokeStyle = ha.owned ? '#ffe680' : 'rgba(255, 255, 255, 0.35)';
-            ctx.lineWidth = (ha.owned ? 3 : 1.5) / zoom;
+            ctx.strokeStyle = isContract ? '#38bdf8' : (ha.owned ? '#ffe680' : 'rgba(255, 255, 255, 0.35)');
+            ctx.lineWidth = (isContract ? 4 : (ha.owned ? 3 : 1.5)) / zoom;
             ctx.strokeRect(hx, hy, HA_PX, HA_PX);
+          }
+
+          if (isContract && HA_PX * zoom >= 42) {
+            ctx.fillStyle = 'rgba(12, 74, 110, 0.92)';
+            ctx.beginPath();
+            ctx.roundRect(hx + 8, hy + 8, 148, 22, 6);
+            ctx.fill();
+            ctx.fillStyle = '#e0f2fe';
+            ctx.font = 'bold 10.5px system-ui, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`📋 CONTRATO · ${state.activeContract.progress || 0}%`, hx + 13, hy + 22);
           }
 
           if (selectedHaIdToBuy === ha.id) {
@@ -2052,7 +2243,7 @@
             ctx.fillRect(hx, hy, HA_PX, HA_PX);
           }
 
-          if (!ha.owned && HA_PX * zoom >= 42) {
+          if (!ha.owned && !isContract && HA_PX * zoom >= 42) {
             const boxW = Math.min(HA_PX - 12, 132);
             const boxH = 42;
             const bx = hx + (HA_PX - boxW) / 2;
@@ -2289,7 +2480,12 @@
         showToast(`Avançou para ${MONTHS[state.monthIndex]} · Ano ${state.year} (${curSeason.name} acaba em ${curSeason.endsMonth})`);
       }
 
-      state.tiles.forEach((tile) => {
+      state.tiles.forEach((tile, idx) => {
+        const tx = idx % TOTAL_TILE_COLS;
+        const ty = Math.floor(idx / TOTAL_TILE_COLS);
+        const hc = Math.floor(tx / SUB_SIZE);
+        const hr = Math.floor(ty / SUB_SIZE);
+        if (isContractHectare(hr * HA_COLS + hc)) return;
         if (tile.state === 'planted' && tile.cropId) {
           const c = CROPS[tile.cropId];
           if (tile.growthMonths < c.monthsToGrow) {
@@ -2417,23 +2613,8 @@
         }
       }
 
-      if (state.activeContract) {
-        const srv = SERVICE_CONTRACTS.find(s => s.id === state.activeContract.id);
-        const needSc = srv ? (srv.requiredSacks || 0) : 0;
-        const cId = srv ? srv.cropId : null;
-        const availSc = cId ? (state.silo[cId] || 0) : 0;
-
-        if (cId && availSc >= needSc) {
-          state.silo[cId] = Math.max(0, +(availSc - needSc).toFixed(2));
-          const hasEquip = srv && srv.requiredItem && ownsItem(srv.requiredItem);
-          const payout = hasEquip ? Math.round(state.activeContract.reward * (srv.bonusFactor || 1.25)) : state.activeContract.reward;
-          state.money += payout;
-          const doneMsg = `Contrato "${state.activeContract.title}" entregue (${needSc} sc ${CROPS[cId].name})! Recebeu ${formatBRL(payout)}.`;
-          state.activeContract = null;
-          showToast(doneMsg);
-        } else {
-          showToast(`Contrato pendente: junte ${needSc} sc de ${CROPS[cId]?.name || 'grão'} no Silo (tem ${availSc.toFixed(1)} sc).`);
-        }
+      if (!state.activeContract) {
+        state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
       }
 
       updateHUD();
@@ -2479,7 +2660,7 @@
         body.innerHTML = `
           <p><strong>1. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
           <p><strong>2. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por 2 colheitas (cobrado na colheita) ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
-          <p><strong>3. Contratos com Entrega:</strong> Para receber o contrato, você precisa ter a quantidade exigida de sacas no Silo quando o mês avançar; elas são entregues e o pagamento cai na hora.</p>
+          <p><strong>3. Contratos Estilo Farming Simulator:</strong> Em <strong>💾</strong> você aceita serviços em talhões vizinhos (arar, semear, pulverizar ou colher). O terreno é liberado no mapa para você trabalhar e paga quando atingir 100%.</p>
           <p><strong>4. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
         `;
       } else if (type === 'shop') {
@@ -2855,25 +3036,41 @@
           }
         `;
       } else if (type === 'save') {
-        title.textContent = '💾 Contratos de Serviço & Save';
+        title.textContent = '💾 Contratos (Farming) & Save';
+        if (!Array.isArray(state.availableContracts) || state.availableContracts.length === 0) {
+          state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
+        }
+
+        const activeHtml = state.activeContract ? `
+          <div class="machine-card" style="border-color:#0284c7;background:#f0f9ff;">
+            <div class="machine-info">
+              <strong>📋 Ativo: ${state.activeContract.title} (${state.activeContract.progress || 0}%)</strong>
+              <small>${state.activeContract.desc}</small><br/>
+              <small>Talhão marcado em azul no mapa: <strong>(${state.activeContract.hc + 1},${state.activeContract.hr + 1})</strong> · Pagamento: <strong>${formatBRL(state.activeContract.reward)}</strong></small>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="action-btn" onclick="focusContractField()">Ir p/ Talhão</button>
+              <button class="action-btn danger" onclick="cancelActiveContract()">Cancelar</button>
+            </div>
+          </div>
+        ` : '';
+
         body.innerHTML = `
-          <h4 style="margin:4px 0 6px;">Contratos de Prestação de Serviço</h4>
-          <p class="confirm-sub"><strong>Como concluir:</strong> Aceite o contrato, colha e junte no Silo a quantidade de sacas exigida. Ao avançar o mês com essas sacas no Silo, o contrato entrega a carga e paga o valor na hora.</p>
-          ${SERVICE_CONTRACTS.map((srv) => {
-            const isActive = state.activeContract && state.activeContract.id === srv.id;
-            const hasEquip = srv.requiredItem && ownsItem(srv.requiredItem);
-            const estPay = hasEquip ? Math.round(srv.reward * srv.bonusFactor) : srv.reward;
-            const haveSc = srv.cropId ? (state.silo[srv.cropId] || 0) : 0;
-            const cropLabel = srv.cropId ? CROPS[srv.cropId].name : '';
+          <h4 style="margin:4px 0 6px;">Contratos em Terrenos Vizinhos</h4>
+          <p class="confirm-sub">Trabalhe em talhões de vizinhos (arar, semear, pulverizar ou colher) usando suas máquinas para lucrar mais. O pagamento cai na hora ao completar <strong>100%</strong> da área.</p>
+          ${activeHtml}
+          ${state.availableContracts.map((srv) => {
+            const isThisActive = state.activeContract && state.activeContract.id === srv.id;
+            const hasActive = Boolean(state.activeContract);
             return `
               <div class="machine-card">
                 <div class="machine-info">
                   <strong>${srv.title}</strong>
                   <small>${srv.desc}</small><br/>
-                  <small>No Silo: <strong>${haveSc.toFixed(1)} / ${srv.requiredSacks} sc ${cropLabel}</strong> · Pagamento: <strong>${formatBRL(estPay)}</strong> ${hasEquip ? '<span class="profit-pos">(Bônus máquina)</span>' : ''}</small>
+                  <small>Pagamento líquido ao concluir: <strong>${formatBRL(srv.reward)}</strong></small>
                 </div>
-                <button class="action-btn ${isActive ? 'secondary' : 'gold'}" onclick="acceptServiceContract('${srv.id}')" ${isActive ? 'disabled' : ''}>
-                  ${isActive ? 'Ativo' : 'Aceitar'}
+                <button class="action-btn ${hasActive ? 'secondary' : 'gold'}" onclick="acceptServiceContract('${srv.id}')" ${hasActive ? 'disabled style="opacity:0.5;"' : ''}>
+                  ${isThisActive ? 'Em Andamento' : 'Aceitar'}
                 </button>
               </div>
             `;
@@ -2997,16 +3194,53 @@
       openModal('shop', 'auction');
     }
 
+    function focusContractField() {
+      const c = state.activeContract;
+      if (!c) return;
+      closeModal();
+      const rect = worldViewport.getBoundingClientRect();
+      const targetZoom = Math.min(1.6, Math.max(0.75, (Math.min(rect.width, rect.height) - 20) / HA_PX));
+      zoom = +targetZoom.toFixed(2);
+      const centerWorldX = c.hc * HA_PX + HA_PX / 2;
+      const centerWorldY = c.hr * HA_PX + HA_PX / 2;
+      camX = rect.width / 2 - centerWorldX * zoom;
+      camY = rect.height / 2 - centerWorldY * zoom;
+      clampCamera();
+      updateZoomBadge();
+      renderWorld();
+    }
+
     function acceptServiceContract(srvId) {
       if (state.activeContract) {
-        showToast('Você já tem um contrato ativo neste mês.');
+        showToast('Você já tem um contrato ativo.');
         return;
       }
-      const srv = SERVICE_CONTRACTS.find(s => s.id === srvId);
+      const srv = (state.availableContracts || []).find(s => s.id === srvId);
       if (!srv) return;
-      state.activeContract = { id: srv.id, title: srv.title, reward: srv.reward };
-      showToast(`Contrato "${srv.title}" aceito! Junte ${srv.requiredSacks} sc no Silo e avance o mês.`);
-      closeModal();
+      const ha = state.hectares.find(h => h.id === srv.haId);
+      if (!ha || ha.owned) {
+        state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
+        openModal('save');
+        return;
+      }
+
+      state.activeContract = { ...srv, progress: 0 };
+      setupContractField(state.activeContract);
+      if (srv.task === 'plant') {
+        selectCrop(srv.cropId);
+      }
+      setTool(srv.task);
+      focusContractField();
+      showToast(`Contrato aceito! Vá ao talhão (${srv.hc + 1},${srv.hr + 1}) e faça o serviço.`);
+    }
+
+    function cancelActiveContract() {
+      if (!state.activeContract) return;
+      clearContractField(state.activeContract.haId);
+      state.activeContract = null;
+      state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
+      renderWorld();
+      showToast('Contrato cancelado.');
       openModal('save');
     }
 
