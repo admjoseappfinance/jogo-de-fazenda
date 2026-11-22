@@ -994,28 +994,34 @@
 
     const SERVICE_CONTRACTS = [
       {
-        id: 'srv_preparo',
-        title: 'Preparo de Solo Vizinho (Aragem)',
-        reward: 7200,
+        id: 'srv_soja',
+        title: 'Entrega de Soja p/ Cooperativa',
+        cropId: 'soja',
+        requiredSacks: 25,
+        reward: 8200,
         requiredItem: 'trator_aracao',
         bonusFactor: 1.25,
-        desc: 'Serviço de aragem em área vizinha. Com Trator próprio ou alugado, recebe +25% de bônus.'
+        desc: 'Exige 25 sacas de Soja no silo. Ao avançar o mês, entrega as sacas e paga R$ 8.200 (+25% com Trator).'
       },
       {
-        id: 'srv_colheita',
-        title: 'Colheita Emergencial de Safra',
-        reward: 11500,
+        id: 'srv_milho',
+        title: 'Fornecimento de Milho p/ Ração',
+        cropId: 'milho',
+        requiredSacks: 40,
+        reward: 9500,
         requiredItem: 'colheitadeira_graos',
         bonusFactor: 1.30,
-        desc: 'Ajuda na colheita de produtor vizinho. Com Colheitadeira ativa, recebe +30% de bônus.'
+        desc: 'Exige 40 sacas de Milho no silo. Ao avançar o mês, entrega as sacas e paga R$ 9.500 (+30% com Colheitadeira).'
       },
       {
-        id: 'srv_frete',
-        title: 'Frete Regional de Grãos',
-        reward: 6800,
+        id: 'srv_trigo',
+        title: 'Remessa de Trigo p/ Moinho',
+        cropId: 'trigo',
+        requiredSacks: 30,
+        reward: 8800,
         requiredItem: 'caminhao_proprio',
         bonusFactor: 1.25,
-        desc: 'Transporte de safra até o armazém. Com Caminhão ativo, recebe +25% de bônus.'
+        desc: 'Exige 30 sacas de Trigo no silo. Ao avançar o mês, entrega as sacas e paga R$ 8.800 (+25% com Caminhão).'
       }
     ];
 
@@ -1250,16 +1256,23 @@
       return bought || rented;
     }
 
+    function addMachineWear(amount) {
+      state.machineWear = Math.min(100, Math.max(0, (state.machineWear || 0) + amount));
+    }
+
     function getPlowCostHa() {
-      return ownsItem('trator_aracao') ? Math.round(BASE_PLOW_HA * 0.45) : BASE_PLOW_HA;
+      const base = ownsItem('trator_aracao') ? Math.round(BASE_PLOW_HA * 0.45) : BASE_PLOW_HA;
+      return Math.round(base * (1 + ((state.machineWear || 0) / 300)));
     }
 
     function getCareCostHa() {
-      return ownsItem('pulverizador_cuidado') ? Math.round(BASE_CARE_HA * 0.45) : BASE_CARE_HA;
+      const base = ownsItem('pulverizador_cuidado') ? Math.round(BASE_CARE_HA * 0.45) : BASE_CARE_HA;
+      return Math.round(base * (1 + ((state.machineWear || 0) / 300)));
     }
 
     function getHarvestCostHa() {
-      return ownsItem('colheitadeira_graos') ? Math.round(BASE_HARVEST_HA * 0.40) : BASE_HARVEST_HA;
+      const base = ownsItem('colheitadeira_graos') ? Math.round(BASE_HARVEST_HA * 0.40) : BASE_HARVEST_HA;
+      return Math.round(base * (1 + ((state.machineWear || 0) / 220)));
     }
 
     function getTransportRatePerSack(modeId = state.transportMode) {
@@ -1633,7 +1646,7 @@
           <div class="summary-box"><span>Custo p/ Arar</span><strong>${formatBRL(actionCost)}</strong></div>
           <div class="summary-box"><span>Caixa Após</span><strong class="${state.money - actionCost >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - actionCost)}</strong></div>
         `;
-        subText = `Valor fixo: ${formatBRL(getPlowCostHa())}/ha para todas as culturas e meses.`;
+        subText = `Custo atual: ${formatBRL(getPlowCostHa())}/ha (inclui desgaste mecânico ${state.machineWear || 0}%).`;
       } else if (currentTool === 'care') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
@@ -1650,7 +1663,7 @@
           <div class="summary-box"><span>Custo p/ Cuidar</span><strong>${formatBRL(actionCost)}</strong></div>
           <div class="summary-box"><span>Efeito</span><strong class="profit-pos">+1 Mês & +Sacas</strong></div>
         `;
-        subText = `Valor fixo: ${formatBRL(getCareCostHa())}/ha · Acelera o crescimento e aumenta a produção.`;
+        subText = `Custo atual: ${formatBRL(getCareCostHa())}/ha · Acelera o crescimento e aumenta a produção.`;
       }
 
       const canAfford = eligible.length > 0 && state.money >= actionCost;
@@ -1692,6 +1705,7 @@
           tile.growthMonths = 0;
           tile.cared = false;
         });
+        addMachineWear(Math.max(1, Math.round(act.coords.length / 24)));
         showToast(`Arou ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
       } else if (act.type === 'plant') {
         if (!act.coords.length || state.money < act.cost) return;
@@ -1706,6 +1720,7 @@
           tile.growthMonths = 0;
           tile.cared = false;
         });
+        addMachineWear(Math.max(1, Math.round(act.coords.length / 36)));
         showToast(`Plantou ${CROPS[act.cropId].name} por ${formatBRL(act.cost)}!`);
       } else if (act.type === 'care') {
         if (!act.coords.length || state.money < act.cost) return;
@@ -1718,6 +1733,7 @@
             tile.growthMonths = Math.min(c.monthsToGrow, tile.growthMonths + 1);
           }
         });
+        addMachineWear(Math.max(1, Math.round(act.coords.length / 28)));
         showToast(`Cuidou de ${act.coords.length} bloco(s) por ${formatBRL(act.cost)}!`);
       }
 
@@ -1752,7 +1768,7 @@
 
       const wearFactor = Math.max(0.75, 1 - ((state.machineWear || 0) / 250));
       const limeBonus = ownsItem('calcaria_adubo') ? 1.15 : 1.0;
-      const harvestRateHa = getHarvestCostHa() * (1 + ((state.machineWear || 0) / 200));
+      const harvestRateHa = getHarvestCostHa();
       let harvestCostTotal = 0;
       const sacksAdded = { soja: 0, milho: 0, trigo: 0, canola: 0, sorgo: 0, aveia: 0 };
 
@@ -1767,7 +1783,7 @@
         harvestCostTotal += harvestRateHa / TILES_PER_HA;
       });
 
-      state.machineWear = Math.min(100, (state.machineWear || 0) + Math.max(1, Math.round(ripeTiles.length / 24)));
+      addMachineWear(Math.max(1, Math.round(ripeTiles.length / 20)));
 
       const costInt = Math.round(harvestCostTotal);
       if (state.money < costInt) {
@@ -2403,12 +2419,21 @@
 
       if (state.activeContract) {
         const srv = SERVICE_CONTRACTS.find(s => s.id === state.activeContract.id);
-        const hasEquip = srv && srv.requiredItem && ownsItem(srv.requiredItem);
-        const payout = hasEquip ? Math.round(state.activeContract.reward * (srv.bonusFactor || 1.25)) : state.activeContract.reward;
-        state.money += payout;
-        const doneMsg = `Contrato "${state.activeContract.title}" concluído! Recebeu ${formatBRL(payout)}.`;
-        state.activeContract = null;
-        showToast(doneMsg);
+        const needSc = srv ? (srv.requiredSacks || 0) : 0;
+        const cId = srv ? srv.cropId : null;
+        const availSc = cId ? (state.silo[cId] || 0) : 0;
+
+        if (cId && availSc >= needSc) {
+          state.silo[cId] = Math.max(0, +(availSc - needSc).toFixed(2));
+          const hasEquip = srv && srv.requiredItem && ownsItem(srv.requiredItem);
+          const payout = hasEquip ? Math.round(state.activeContract.reward * (srv.bonusFactor || 1.25)) : state.activeContract.reward;
+          state.money += payout;
+          const doneMsg = `Contrato "${state.activeContract.title}" entregue (${needSc} sc ${CROPS[cId].name})! Recebeu ${formatBRL(payout)}.`;
+          state.activeContract = null;
+          showToast(doneMsg);
+        } else {
+          showToast(`Contrato pendente: junte ${needSc} sc de ${CROPS[cId]?.name || 'grão'} no Silo (tem ${availSc.toFixed(1)} sc).`);
+        }
       }
 
       updateHUD();
@@ -2452,10 +2477,10 @@
       if (type === 'help') {
         title.textContent = '❓ Como Jogar & Regras';
         body.innerHTML = `
-          <p><strong>1. Custos Fixos:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base para todas as culturas. Só o custo de <strong>Plantar</strong> muda por cultura.</p>
-          <p><strong>2. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por safra ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
-          <p><strong>3. Transporte:</strong> Camionete (20 a 70 sacas) cobra <strong>R$ 22/sc</strong>; Caminhão alugado (500 a 800 sacas) cobra <strong>R$ 8/sc</strong>. Comprando ou alugando equipamentos na <strong>Loja</strong>, os custos caem.</p>
-          <p><strong>4. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (4 meses), com simulador no financeiro.</p>
+          <p><strong>1. Custos Operacionais:</strong> Arar (${formatBRL(getPlowCostHa())}/ha), Cuidar (${formatBRL(getCareCostHa())}/ha) e Colher (${formatBRL(getHarvestCostHa())}/ha) têm o mesmo valor base por cultura, ajustados pelo desgaste das máquinas (${state.machineWear || 0}%). Só o custo de <strong>Plantar</strong> muda por cultura.</p>
+          <p><strong>2. Arrendamento & Leilão:</strong> Na Loja você pode <strong>Alugar</strong> por 2 colheitas (cobrado na colheita) ou comprar usados no <strong>Leilão</strong> com desconto (com desgaste inicial).</p>
+          <p><strong>3. Contratos com Entrega:</strong> Para receber o contrato, você precisa ter a quantidade exigida de sacas no Silo quando o mês avançar; elas são entregues e o pagamento cai na hora.</p>
+          <p><strong>4. Empréstimos por Safra:</strong> Limite baseado no patrimônio, parcelados a cada safra (após colher), com simulador no financeiro.</p>
         `;
       } else if (type === 'shop') {
         if (tabParam) activeShopTab = tabParam;
@@ -2469,6 +2494,10 @@
           ? `<p class="confirm-sub"><strong>Arrendamentos ativos:</strong> ${(state.leasedMachines || []).map(l => `${l.name} (${formatBRL(l.rentPerHarvest)}/colheita · ${l.harvestsLeft} restante(s))`).join(' · ')}</p>`
           : '';
 
+        const shopIntroHtml = isAuctionTab
+          ? `<p class="confirm-sub"><strong>Como funciona o Leilão:</strong> Máquinas usadas saem com 30% a 38% de desconto à vista, mas já vêm com desgaste de uso e aumentam o desgaste geral da oficina.</p>`
+          : `<p class="confirm-sub"><strong>Como funciona o Arrendamento (Aluguel):</strong> Você paga a 1ª parcela agora para liberar a máquina por <strong>2 colheitas</strong> e paga a 2ª parcela automaticamente ao colher. Se comprar à vista, a máquina é sua para sempre.</p>`;
+
         body.innerHTML = `
           <div class="tab-row">
             <button class="tab-btn ${activeShopTab === 'all' ? 'active' : ''}" onclick="openModal('shop','all')">Todos</button>
@@ -2478,6 +2507,7 @@
             <button class="tab-btn ${activeShopTab === 'caminhao' ? 'active' : ''}" onclick="openModal('shop','caminhao')">Caminhões</button>
             <button class="tab-btn ${isAuctionTab ? 'active' : ''}" onclick="openModal('shop','auction')">🔨 Leilão</button>
           </div>
+          ${shopIntroHtml}
           ${activeLeasesHtml}
           ${isAuctionTab
             ? USED_AUCTION_LOTS.map((lot) => {
@@ -2511,7 +2541,7 @@
                     <div class="machine-info">
                       <strong>${item.name}</strong>
                       <small>${item.desc}</small><br/>
-                      <small><strong>Compra: ${formatBRL(item.price)}</strong> · Aluguel: <strong>${formatBRL(item.rentPerHarvest)}/colheita</strong></small>
+                      <small><strong>Compra: ${formatBRL(item.price)}</strong> · Aluguel: <strong>${formatBRL(item.rentPerHarvest)}/colheita</strong> (2 colheitas)</small>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:4px;">
                       ${bought
@@ -2630,7 +2660,7 @@
           </div>
         `;
       } else if (type === 'prices') {
-        title.textContent = '📊 Preços Sazonais & Custos Base';
+        title.textContent = '📊 Preços Sazonais & Guia das Culturas';
         const curM = state.monthIndex;
         body.innerHTML = `
           <p class="confirm-sub">Estação atual: <strong>${getSeasonInfo(state.monthIndex).icon} ${getSeasonInfo(state.monthIndex).name}</strong> (acaba em <strong>${getSeasonInfo(state.monthIndex).endsMonth}</strong>) · Estação ideal dá <strong>+28% sacas</strong> · Fora da estação: <strong>-28% sacas</strong>.</p>
@@ -2639,6 +2669,8 @@
               <thead>
                 <tr>
                   <th>Cultura</th>
+                  <th>Ciclo / Base</th>
+                  <th>Melhor Época</th>
                   <th>Plantar/ha</th>
                   ${MONTHS.map((m, i) => `<th style="${i === curM ? 'outline:2px solid #f2b729;' : ''}">${m}</th>`).join('')}
                 </tr>
@@ -2647,6 +2679,8 @@
                 ${CROP_LIST.map((c) => `
                   <tr>
                     <td><strong>${c.name}</strong></td>
+                    <td>${c.monthsToGrow}m · ${c.baseYieldPerHa} sc/ha</td>
+                    <td>${getBestSeasonNames(c)}</td>
                     <td><strong>${formatBRL(c.plantCostHa)}</strong></td>
                     ${c.prices.map((p, i) => `<td class="${getPriceLevel(c, i)}">${formatBRL(p)}</td>`).join('')}
                   </tr>
@@ -2654,6 +2688,7 @@
               </tbody>
             </table>
           </div>
+          <p class="confirm-sub"><strong>Como funciona cada cultura:</strong> ao plantar no mês ideal (${getSeasonInfo(curM).name} agora), ela cresce por <strong>3 a 4 meses</strong> (avança 1 mês por mês, ou +1 mês ao Cuidar) e fica pronta para <strong>Colher Tudo</strong> no silo. Alternar culturas evita fadiga de solo.</p>
         `;
       } else if (type === 'calendar') {
         const s = getSeasonInfo(state.monthIndex);
@@ -2823,17 +2858,19 @@
         title.textContent = '💾 Contratos de Serviço & Save';
         body.innerHTML = `
           <h4 style="margin:4px 0 6px;">Contratos de Prestação de Serviço</h4>
-          <p class="confirm-sub">Trabalhe em áreas vizinhas durante o mês e receba ao avançar o tempo. Ter o maquinário correspondente aumenta o pagamento.</p>
+          <p class="confirm-sub"><strong>Como concluir:</strong> Aceite o contrato, colha e junte no Silo a quantidade de sacas exigida. Ao avançar o mês com essas sacas no Silo, o contrato entrega a carga e paga o valor na hora.</p>
           ${SERVICE_CONTRACTS.map((srv) => {
             const isActive = state.activeContract && state.activeContract.id === srv.id;
             const hasEquip = srv.requiredItem && ownsItem(srv.requiredItem);
             const estPay = hasEquip ? Math.round(srv.reward * srv.bonusFactor) : srv.reward;
+            const haveSc = srv.cropId ? (state.silo[srv.cropId] || 0) : 0;
+            const cropLabel = srv.cropId ? CROPS[srv.cropId].name : '';
             return `
               <div class="machine-card">
                 <div class="machine-info">
                   <strong>${srv.title}</strong>
                   <small>${srv.desc}</small><br/>
-                  <small>Pagamento estimado: <strong>${formatBRL(estPay)}</strong> ${hasEquip ? '<span class="profit-pos">(Bônus máquina)</span>' : ''}</small>
+                  <small>No Silo: <strong>${haveSc.toFixed(1)} / ${srv.requiredSacks} sc ${cropLabel}</strong> · Pagamento: <strong>${formatBRL(estPay)}</strong> ${hasEquip ? '<span class="profit-pos">(Bônus máquina)</span>' : ''}</small>
                 </div>
                 <button class="action-btn ${isActive ? 'secondary' : 'gold'}" onclick="acceptServiceContract('${srv.id}')" ${isActive ? 'disabled' : ''}>
                   ${isActive ? 'Ativo' : 'Aceitar'}
@@ -2843,6 +2880,7 @@
           }).join('')}
 
           <h4 style="margin:12px 0 6px;">Oficina & Save do Jogo</h4>
+          <p class="confirm-sub">Desgaste atual das máquinas: <strong>${state.machineWear || 0}%</strong> (aumenta ao arar, cuidar e colher; revisão zera o desgaste).</p>
           <div class="field-row">
             <button class="action-btn gold" onclick="repairMachinery()">Revisar Oficina (${formatBRL(Math.max(1500, (state.machineWear || 0) * 180))})</button>
             <button class="action-btn" onclick="saveGame()">Salvar</button>
@@ -2967,7 +3005,7 @@
       const srv = SERVICE_CONTRACTS.find(s => s.id === srvId);
       if (!srv) return;
       state.activeContract = { id: srv.id, title: srv.title, reward: srv.reward };
-      showToast(`Contrato "${srv.title}" aceito! Avance o mês para concluir.`);
+      showToast(`Contrato "${srv.title}" aceito! Junte ${srv.requiredSacks} sc no Silo e avance o mês.`);
       closeModal();
       openModal('save');
     }
