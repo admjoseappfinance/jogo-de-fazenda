@@ -2489,41 +2489,214 @@
       showToast(`⏳ Colheita iniciada (${formatDurationSec(durationSec)} · custo ${formatBRL(costInt)})`);
     }
 
+    /* =========================================================================
+       GRÁFICOS APRIMORADOS DO MAPA (MESMO LAYOUT E MECÂNICAS)
+       ========================================================================= */
+    function hashCoord(a, b) {
+      const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
+      return n - Math.floor(n);
+    }
+
+    function drawRawGrassTile(x, y, size, tx, ty, owned) {
+      const r1 = hashCoord(tx, ty);
+      const r2 = hashCoord(tx + 19, ty + 37);
+
+      if (owned) {
+        ctx.fillStyle = (tx + ty) % 2 === 0 ? '#6ab33b' : '#62a835';
+      } else {
+        ctx.fillStyle = (tx + ty) % 2 === 0 ? '#4d7534' : '#456a2e';
+      }
+      ctx.fillRect(x, y, size, size);
+
+      if (size * zoom < 11) return;
+
+      // Gradiente suave de profundidade no bloco
+      const grad = ctx.createLinearGradient(x, y, x, y + size);
+      grad.addColorStop(0, 'rgba(255, 255, 220, 0.05)');
+      grad.addColorStop(1, 'rgba(18, 36, 8, 0.14)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, size, size);
+
+      // Tufos de grama orgânicos
+      const bladeColor = owned ? '#88cf4e' : '#669447';
+      const darkBlade = owned ? '#498222' : '#32521e';
+      const spots = [
+        [x + 8 + r1 * 8, y + 10 + r2 * 6],
+        [x + 22 + r2 * 8, y + 22 + r1 * 8]
+      ];
+      spots.forEach(([bx, by]) => {
+        ctx.strokeStyle = darkBlade;
+        ctx.lineWidth = 1.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, by + 4);
+        ctx.lineTo(bx - 3, by - 2);
+        ctx.moveTo(bx, by + 4);
+        ctx.lineTo(bx + 1, by - 3.5);
+        ctx.moveTo(bx, by + 4);
+        ctx.lineTo(bx + 4, by - 1.5);
+        ctx.stroke();
+
+        ctx.strokeStyle = bladeColor;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(bx, by + 3);
+        ctx.lineTo(bx - 2.5, by - 2);
+        ctx.moveTo(bx, by + 3);
+        ctx.lineTo(bx + 3.5, by - 1.5);
+        ctx.stroke();
+      });
+
+      // Pequena florzinha ou pedra em alguns blocos
+      if (r1 > 0.72) {
+        ctx.fillStyle = owned ? '#fff394' : '#94a38a';
+        ctx.beginPath();
+        ctx.arc(x + 26, y + 10, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (r2 > 0.78) {
+        ctx.fillStyle = owned ? '#8c7a65' : '#5a6354';
+        ctx.beginPath();
+        ctx.ellipse(x + 11, y + 27, 2.8, 1.7, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawPlowedSoilTile(x, y, size, tx, ty, isPlanted) {
+      if (!isPlanted) {
+        ctx.fillStyle = '#a67040';
+        ctx.fillRect(x, y, size, size);
+      } else {
+        ctx.fillStyle = '#5c381a';
+        ctx.fillRect(x, y, size, size);
+      }
+
+      if (size * zoom < 10) return;
+
+      // Borda sutil de solo fértil
+      const grad = ctx.createLinearGradient(x, y, x, y + size);
+      grad.addColorStop(0, isPlanted ? 'rgba(255, 220, 170, 0.05)' : 'rgba(255, 232, 195, 0.12)');
+      grad.addColorStop(1, 'rgba(25, 14, 5, 0.22)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, size, size);
+
+      // Sulcos paralelos em 2 tons
+      const furrowCount = 4;
+      for (let f = 1; f <= furrowCount; f++) {
+        const fy = y + (size / (furrowCount + 1)) * f;
+        ctx.fillStyle = isPlanted ? '#3a210d' : '#754721';
+        ctx.fillRect(x + 2, fy - 1.4, size - 4, 2.8);
+
+        ctx.fillStyle = isPlanted ? '#754924' : '#be8754';
+        ctx.fillRect(x + 2, fy - 2.3, size - 4, 1.1);
+      }
+
+      // Pequenos torrões de terra
+      const n = hashCoord(tx * 3, ty * 5);
+      ctx.fillStyle = isPlanted ? '#2e1909' : '#633b19';
+      ctx.beginPath();
+      ctx.arc(x + 9 + n * 16, y + 12, 1.5, 0, Math.PI * 2);
+      ctx.arc(x + 24 - n * 12, y + 26, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     function drawCropWithLevelBar(x, y, size, crop, growthMonths, cared) {
       const isRipe = growthMonths >= crop.monthsToGrow;
-      const progress = Math.min(1, growthMonths / crop.monthsToGrow);
-      const scale = Math.max(0.55, (size / 42) * (0.65 + 0.35 * progress));
+      const progress = Math.min(1, Math.max(0.15, growthMonths / crop.monthsToGrow));
+      const scale = Math.max(0.58, (size / 36) * (0.62 + 0.38 * progress));
 
       ctx.save();
       ctx.translate(x + size * 0.5, y + size * 0.52);
+
+      // Sombra da planta no solo
+      ctx.fillStyle = 'rgba(18, 12, 5, 0.32)';
+      ctx.beginPath();
+      ctx.ellipse(0, 8 * (size / 36), 8 * (size / 36), 3.2 * (size / 36), 0, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.scale(scale, scale);
 
-      ctx.strokeStyle = '#387d1e';
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-2, 7);
-      ctx.quadraticCurveTo(-2, -2, 2, -9);
-      ctx.stroke();
-
-      ctx.fillStyle = '#5eb832';
-      ctx.beginPath();
-      ctx.ellipse(-6, 1, 5, 2.4, -0.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(5, 2.5, 5, 2.4, 0.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = isRipe ? '#ffdf33' : crop.ripeColor;
-      ctx.strokeStyle = '#8c5808';
-      ctx.lineWidth = 1;
-      const grains = [[2, -9], [6, -6.5], [1, -4.5], [5, -2], [0, 0]];
-      grains.forEach(([gx, gy]) => {
+      // Estágio 1: Broto jovem
+      if (progress < 0.45) {
+        ctx.strokeStyle = '#3b821e';
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.ellipse(gx, gy, 3.2, 1.8, -0.45, 0, Math.PI * 2);
+        ctx.moveTo(0, 8);
+        ctx.lineTo(0, -1);
+        ctx.stroke();
+
+        ctx.fillStyle = '#74cf3e';
+        ctx.strokeStyle = '#2e6312';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.ellipse(-4.5, -2, 4.5, 2.3, -0.45, 0, Math.PI * 2);
+        ctx.ellipse(4.5, -2, 4.5, 2.3, 0.45, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-      });
+      } else {
+        // Caule e folhas ramificadas
+        ctx.strokeStyle = isRipe ? '#8c7a23' : '#3a7d1e';
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-1, 8);
+        ctx.quadraticCurveTo(-2, -1, 1.5, -10);
+        ctx.stroke();
+
+        ctx.fillStyle = isRipe ? '#b8a232' : '#5ab530';
+        ctx.strokeStyle = '#2a5912';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.ellipse(-6.5, 2, 5.2, 2.4, -0.55, 0, Math.PI * 2);
+        ctx.ellipse(6.5, 3, 5.2, 2.4, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Cabeça/fruto conforme a cultura e maturação
+        const headColor = isRipe ? '#ffe338' : crop.ripeColor;
+        const borderColor = isRipe ? '#9e6203' : '#7d4d07';
+
+        if (crop.id === 'milho' || crop.id === 'sorgo') {
+          ctx.fillStyle = headColor;
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(3, -6, 3.6, 6.2, 0.22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else if (crop.id === 'soja') {
+          ctx.fillStyle = headColor;
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 1.1;
+          [[-4, -5], [4, -6], [2, -1]].forEach(([vx, vy]) => {
+            ctx.beginPath();
+            ctx.ellipse(vx, vy, 3.3, 1.9, -0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          });
+        } else {
+          // Trigo, Canola, Aveia
+          ctx.fillStyle = headColor;
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 1;
+          const grains = [[1.5, -10], [5.5, -7.5], [0.5, -5.5], [4.5, -3], [0, -1]];
+          grains.forEach(([gx, gy]) => {
+            ctx.beginPath();
+            ctx.ellipse(gx, gy, 3.1, 1.8, -0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          });
+        }
+
+        // Brilho dourado de colheita pronta
+        if (isRipe) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(4, -9, 1.7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       ctx.restore();
 
       if (size * zoom >= 12) {
@@ -2532,19 +2705,112 @@
         const bx = x + 3;
         const by = y + size - 6;
 
-        ctx.fillStyle = 'rgba(25, 20, 12, 0.72)';
+        ctx.fillStyle = 'rgba(25, 20, 12, 0.78)';
         ctx.fillRect(bx, by, barW, barH);
 
-        ctx.fillStyle = isRipe ? '#47d938' : '#f2c329';
+        ctx.fillStyle = isRipe ? '#47e339' : '#f5c427';
         ctx.fillRect(bx + 0.5, by + 0.5, Math.max(1, (barW - 1) * progress), barH - 1);
       }
 
       if (cared && size * zoom >= 14) {
-        ctx.fillStyle = '#5cd6ff';
+        ctx.fillStyle = '#48cbff';
+        ctx.strokeStyle = '#0e4e73';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(x + size - 6, y + 6, 2.4, 0, Math.PI * 2);
+        ctx.arc(x + size - 6, y + 6, 2.7, 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
       }
+    }
+
+    function drawAnimalSprite(animal) {
+      const isSmall = animal.type === 'ovelha' || animal.type === 'porco' || animal.type === 'galinha' || (animal.ageMonths || 0) < 8 || animal.arrobas < 5;
+      if (isSmall) {
+        ctx.scale(animal.type === 'galinha' ? 0.56 : 0.72, animal.type === 'galinha' ? 0.56 : 0.72);
+      }
+
+      // Sombra no chão
+      ctx.fillStyle = 'rgba(20, 16, 8, 0.28)';
+      ctx.beginPath();
+      ctx.ellipse(0, 8.5, 13, 4.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pernas
+      ctx.strokeStyle = '#2b180a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-7, 5); ctx.lineTo(-7, 9.5);
+      ctx.moveTo(-2, 5); ctx.lineTo(-2, 9.5);
+      ctx.moveTo(5, 5); ctx.lineTo(5, 9.5);
+      ctx.moveTo(9, 5); ctx.lineTo(9, 9.5);
+      ctx.stroke();
+
+      // Corpo
+      if (animal.type === 'ovelha') {
+        ctx.fillStyle = '#f7f4ed';
+      } else if (animal.type === 'porco') {
+        ctx.fillStyle = '#f5a4bc';
+      } else if (animal.type === 'galinha') {
+        ctx.fillStyle = '#fff8e3';
+      } else if (animal.type === 'vaca') {
+        ctx.fillStyle = '#faf8f2';
+      } else {
+        ctx.fillStyle = '#944f28';
+      }
+      ctx.strokeStyle = '#2b180a';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(-12, -7.5, 24, 14, 5.5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Manchas / detalhes do corpo
+      if (animal.type === 'vaca') {
+        ctx.fillStyle = '#24211e';
+        ctx.beginPath();
+        ctx.ellipse(-4, -2, 4.2, 2.8, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(4.5, 2.5, 3.6, 2.3, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (animal.type === 'ovelha') {
+        ctx.strokeStyle = '#d6cfc2';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(-4, 0, 3.5, 0, Math.PI * 1.4);
+        ctx.arc(4, 0, 3.5, 0, Math.PI * 1.4);
+        ctx.stroke();
+      }
+
+      // Cabeça
+      ctx.fillStyle = animal.type === 'galinha' ? '#fff3cf' : (animal.type === 'porco' ? '#e882a0' : (animal.type === 'vaca' || animal.type === 'ovelha' ? '#efe9de' : '#733919'));
+      ctx.beginPath();
+      ctx.arc(13, -2.5, 5.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Crista da galinha ou chifres/focinho
+      if (animal.type === 'galinha') {
+        ctx.fillStyle = '#d93829';
+        ctx.beginPath();
+        ctx.arc(13, -7.8, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f5b727';
+        ctx.beginPath();
+        ctx.moveTo(18, -3); ctx.lineTo(21.5, -2); ctx.lineTo(18, -1);
+        ctx.closePath();
+        ctx.fill();
+      } else if (animal.type === 'porco') {
+        ctx.fillStyle = '#f7b7ca';
+        ctx.beginPath();
+        ctx.ellipse(17.5, -2, 2.2, 2.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Olho
+      ctx.fillStyle = '#140c05';
+      ctx.beginPath();
+      ctx.arc(14.5, -3.5, 1.3, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     function renderWorld() {
@@ -2552,7 +2818,7 @@
       const w = rect.width;
       const h = rect.height;
 
-      ctx.fillStyle = '#375c21';
+      ctx.fillStyle = '#34571e';
       ctx.fillRect(0, 0, w, h);
 
       ctx.save();
@@ -2576,40 +2842,24 @@
           const fac = getHectareFacilityType(ha);
 
           if (!ha.owned && !isContract) {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#4d7335' : '#466930';
-            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            drawRawGrassTile(x, y, TILE_PX, tx, ty, false);
           } else if (ha.owned && fac === 'pasture') {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#79ba47' : '#6ead3e';
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#7ec248' : '#73b53f';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (ha.owned && fac === 'coop') {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#c9a66b' : '#b89458';
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#d1ae71' : '#c29e61';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (ha.owned && fac === 'sty') {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#9c7856' : '#8c6948';
+            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#a67f5b' : '#96704e';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'raw') {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#6bb33d' : '#63a837';
-            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            drawRawGrassTile(x, y, TILE_PX, tx, ty, true);
           } else if (tile.state === 'plowed') {
-            ctx.fillStyle = '#a36e3e';
-            ctx.fillRect(x, y, TILE_PX, TILE_PX);
-            if (TILE_PX * zoom >= 12) {
-              ctx.fillStyle = '#7d4f27';
-              for (let f = 1; f <= 4; f++) {
-                const fy = y + (TILE_PX / 5) * f;
-                ctx.fillRect(x + 2, fy - 1, TILE_PX - 4, 2);
-              }
-            }
+            drawPlowedSoilTile(x, y, TILE_PX, tx, ty, false);
           } else if (tile.state === 'planted') {
             const crop = CROPS[tile.cropId] || CROPS.soja;
-            ctx.fillStyle = '#5c391b';
-            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            drawPlowedSoilTile(x, y, TILE_PX, tx, ty, true);
             if (TILE_PX * zoom >= 12) {
-              ctx.fillStyle = '#3f250f';
-              for (let f = 1; f <= 4; f++) {
-                const fy = y + (TILE_PX / 5) * f;
-                ctx.fillRect(x + 2, fy - 1, TILE_PX - 4, 2);
-              }
               drawCropWithLevelBar(x, y, TILE_PX, crop, tile.growthMonths, tile.cared);
             } else {
               ctx.fillStyle = tile.growthMonths >= crop.monthsToGrow ? '#47d938' : crop.color;
@@ -2618,7 +2868,7 @@
           }
 
           if (TILE_PX * zoom >= 10) {
-            ctx.strokeStyle = 'rgba(28, 48, 18, 0.28)';
+            ctx.strokeStyle = 'rgba(24, 42, 14, 0.24)';
             ctx.lineWidth = 1 / zoom;
             ctx.strokeRect(x, y, TILE_PX, TILE_PX);
           }
@@ -2631,9 +2881,9 @@
           if (tx < minTx || tx > maxTx || ty < minTy || ty > maxTy) return;
           const x = tx * TILE_PX;
           const y = ty * TILE_PX;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
           ctx.fillRect(x, y, TILE_PX, TILE_PX);
-          ctx.strokeStyle = 'rgba(224, 242, 254, 0.72)';
+          ctx.strokeStyle = 'rgba(224, 242, 254, 0.78)';
           ctx.lineWidth = 1.5 / zoom;
           ctx.strokeRect(x + 1 / zoom, y + 1 / zoom, TILE_PX - 2 / zoom, TILE_PX - 2 / zoom);
         });
@@ -2784,41 +3034,10 @@
           const rowSlot = Math.floor(slot / 4) % 4;
           const ax = pHa.hc * HA_PX + 42 + colSlot * 56;
           const ay = pHa.hr * HA_PX + 52 + rowSlot * 52;
-          const isSmall = animal.type === 'ovelha' || animal.type === 'porco' || animal.type === 'galinha' || (animal.ageMonths || 0) < 8 || animal.arrobas < 5;
 
           ctx.save();
           ctx.translate(ax, ay);
-          if (isSmall) ctx.scale(animal.type === 'galinha' ? 0.52 : 0.68, animal.type === 'galinha' ? 0.52 : 0.68);
-          if (animal.type === 'ovelha') {
-            ctx.fillStyle = '#f2efe9';
-          } else if (animal.type === 'porco') {
-            ctx.fillStyle = '#f29cb5';
-          } else if (animal.type === 'galinha') {
-            ctx.fillStyle = '#fff5d6';
-          } else if (animal.type === 'vaca') {
-            ctx.fillStyle = '#f7f5f0';
-          } else {
-            ctx.fillStyle = '#8c4a27';
-          }
-          ctx.strokeStyle = '#2b180a';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.roundRect(-12, -7, 24, 14, 5);
-          ctx.fill();
-          ctx.stroke();
-
-          if (animal.type === 'vaca') {
-            ctx.fillStyle = '#262320';
-            ctx.beginPath();
-            ctx.arc(-4, -2, 3.2, 0, Math.PI * 2);
-            ctx.arc(4, 2, 2.8, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.fillStyle = animal.type === 'galinha' ? '#d93829' : (animal.type === 'porco' ? '#e37d9b' : (animal.type === 'vaca' || animal.type === 'ovelha' ? '#ebe6dc' : '#6e371a'));
-          ctx.beginPath();
-          ctx.arc(13, -3, 5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
+          drawAnimalSprite(animal);
           ctx.restore();
         });
       }
