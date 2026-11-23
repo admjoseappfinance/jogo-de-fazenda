@@ -77,6 +77,12 @@
       gap: 6px;
     }
 
+    .top-controls-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
     .stat-pill {
       display: inline-flex;
       align-items: center;
@@ -157,6 +163,11 @@
       background: #ffe885;
       border-color: #a86c05;
       box-shadow: 0 0 0 2px var(--gold-accent);
+    }
+
+    .cream-btn.muted {
+      background: #e6dcc7;
+      opacity: 0.78;
     }
 
     .cream-btn:active {
@@ -699,7 +710,7 @@
     <header class="top-area">
       <div class="top-pills-row">
         <div class="pills-left">
-          <div class="stat-pill" onclick="openModal('finance')" title="Financeiro, Empréstimos e Simulador de Safra">
+          <div class="stat-pill" onclick="playSfx('click'); openModal('finance')" title="Financeiro, Empréstimos e Simulador de Safra">
             <div class="stat-pill-icon coin">$</div>
             <div class="stat-pill-texts">
               <span class="stat-pill-label">Caixa</span>
@@ -707,7 +718,7 @@
             </div>
           </div>
 
-          <div class="stat-pill teal" onclick="focusMainHectare()" title="Hectares Próprios">
+          <div class="stat-pill teal" onclick="playSfx('click'); focusMainHectare()" title="Hectares Próprios">
             <div class="stat-pill-icon">🌾</div>
             <div class="stat-pill-texts">
               <span class="stat-pill-label">Hectares</span>
@@ -716,33 +727,38 @@
           </div>
         </div>
 
-        <button class="cream-btn" id="btnAuto10s" onclick="toggleAuto10s()" title="Teste: acelera o tempo (1 mês a cada 10s e trabalhos mais rápidos)">
-          ⏱️ 10s/Mês: OFF
-        </button>
+        <div class="top-controls-right">
+          <button class="cream-btn" id="btnSoundToggle" onclick="toggleSound()" title="Ligar ou desligar sons do jogo">
+            🔊 Som: ON
+          </button>
+          <button class="cream-btn" id="btnAuto10s" onclick="toggleAuto10s()" title="Teste: acelera o tempo (1 mês a cada 10s e trabalhos mais rápidos)">
+            ⏱️ 10s/Mês: OFF
+          </button>
+        </div>
       </div>
 
       <div class="top-sub-row">
-        <button class="cream-btn" onclick="fitAllHectares()" title="Ver todos os 100 hectares">
+        <button class="cream-btn" onclick="playSfx('click'); fitAllHectares()" title="Ver todos os 100 hectares">
           🗺️ Mapa Completo
         </button>
-        <button class="orange-square-btn" onclick="openModal('help')" title="Ajuda">?</button>
+        <button class="orange-square-btn" onclick="playSfx('click'); openModal('help')" title="Ajuda">?</button>
 
-        <div class="mini-hud-chip" onclick="openModal('calendar')" id="hudDateChip">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('calendar')" id="hudDateChip">
           ☀️ Jan · Ano 1
         </div>
-        <div class="mini-hud-chip" onclick="openModal('silo')" id="hudSiloChip">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('silo')" id="hudSiloChip">
           🌾 Silo: 0.0 sc
         </div>
-        <div class="mini-hud-chip" onclick="openModal('livestock')" id="hudLivestockChip">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('livestock')" id="hudLivestockChip">
           🐄 Gado: 0
         </div>
-        <div class="mini-hud-chip" onclick="openModal('shop')">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('shop')">
           🚜 Loja
         </div>
-        <div class="mini-hud-chip" onclick="openModal('prices')">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('prices')">
           📊 Preços
         </div>
-        <div class="mini-hud-chip" onclick="openModal('save')">
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('save')">
           💾
         </div>
       </div>
@@ -758,23 +774,23 @@
         </div>
 
         <div class="cam-controls">
-          <button class="cam-btn" onclick="zoomBy(1.28)" title="Aproximar Zoom">+</button>
+          <button class="cam-btn" onclick="playSfx('click'); zoomBy(1.28)" title="Aproximar Zoom">+</button>
           <div class="zoom-pill" id="zoomReadout">100%</div>
-          <button class="cam-btn" onclick="zoomBy(0.78)" title="Afastar Zoom">−</button>
-          <button class="cam-btn" id="btnPanToggle" onclick="togglePanMode()" title="Mover Câmera (1 dedo)">✋</button>
-          <button class="cam-btn" onclick="focusMainHectare()" title="Centralizar Fazenda">🏡</button>
+          <button class="cam-btn" onclick="playSfx('click'); zoomBy(0.78)" title="Afastar Zoom">−</button>
+          <button class="cam-btn" id="btnPanToggle" onclick="playSfx('click'); togglePanMode()" title="Mover Câmera (1 dedo)">✋</button>
+          <button class="cam-btn" onclick="playSfx('click'); focusMainHectare()" title="Centralizar Fazenda">🏡</button>
         </div>
 
         <!-- CONFIRMATION DRAWER -->
         <div class="confirm-card" id="confirmCard">
           <div class="confirm-header">
             <span id="confirmTitle">Confirmar Ação</span>
-            <button class="close-x" onclick="clearSelection()">✕</button>
+            <button class="close-x" onclick="playSfx('click'); clearSelection()">✕</button>
           </div>
           <div class="confirm-summary-big" id="confirmSummaryBoxes"></div>
           <div class="confirm-sub" id="confirmSubInfo"></div>
           <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:2px;">
-            <button class="action-btn secondary" onclick="clearSelection()">Cancelar</button>
+            <button class="action-btn secondary" onclick="playSfx('click'); clearSelection()">Cancelar</button>
             <button class="action-btn" id="confirmExecuteBtn" onclick="executeConfirmedAction()">Confirmar</button>
           </div>
         </div>
@@ -786,7 +802,7 @@
       <div class="crop-selector-bar" id="cropSelectorBar"></div>
 
       <div class="dock-container">
-        <button class="tool-card active" data-tool="plow" onclick="setTool('plow')">
+        <button class="tool-card active" data-tool="plow" onclick="playSfx('click'); setTool('plow')">
           <div class="tool-icon-svg">
             <svg width="24" height="24" viewBox="0 0 32 32">
               <path d="M7 25 L21 11" stroke="#8b5a2b" stroke-width="3.5" stroke-linecap="round"/>
@@ -796,7 +812,7 @@
           <span class="tool-card-label">Arar</span>
         </button>
 
-        <button class="tool-card" data-tool="plant" onclick="setTool('plant')">
+        <button class="tool-card" data-tool="plant" onclick="playSfx('click'); setTool('plant')">
           <div class="tool-icon-svg">
             <svg width="24" height="24" viewBox="0 0 32 32">
               <ellipse cx="16" cy="15" rx="6" ry="10" transform="rotate(28 16 15)" fill="#f5c52c" stroke="#9c6f06" stroke-width="1.5"/>
@@ -807,7 +823,7 @@
           <span class="tool-card-label">Plantar</span>
         </button>
 
-        <button class="tool-card" data-tool="care" onclick="setTool('care')">
+        <button class="tool-card" data-tool="care" onclick="playSfx('click'); setTool('care')">
           <div class="tool-icon-svg">
             <svg width="24" height="24" viewBox="0 0 32 32">
               <path d="M16 5 C16 5 8 15 8 20 A8 8 0 0 0 24 20 C24 15 16 5 16 5 Z" fill="#4db8ff" stroke="#186fa8" stroke-width="1.8"/>
@@ -841,7 +857,7 @@
     <div class="modal-panel" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-title" id="modalTitle">Janela</h2>
-        <button class="close-x" onclick="closeModal()">✕</button>
+        <button class="close-x" onclick="playSfx('click'); closeModal()">✕</button>
       </div>
       <div id="modalBody"></div>
     </div>
@@ -850,21 +866,140 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    /* =========================================================================
+       SISTEMA DE SONS PROCEDURAIS (WEB AUDIO API)
+       ========================================================================= */
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!soundEnabled) return null;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtx) {
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function playTone(freqStart, freqEnd, duration, type = 'sine', gainPeak = 0.08, delay = 0) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freqStart, now);
+      if (freqEnd !== null && freqEnd !== freqStart) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), now + duration);
+      }
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(gainPeak, now + Math.min(0.015, duration * 0.2));
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function playNoiseBurst(duration, filterFreq = 900, gainPeak = 0.07, delay = 0) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime + delay;
+      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(filterFreq, now);
+      filter.Q.setValueAtTime(1.2, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(gainPeak, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(now);
+      src.stop(now + duration + 0.02);
+    }
+
+    function playSfx(name) {
+      if (!soundEnabled) return;
+      if (name === 'click') {
+        playTone(540, 680, 0.045, 'triangle', 0.05);
+      } else if (name === 'select') {
+        playTone(420, 560, 0.055, 'sine', 0.045);
+      } else if (name === 'error') {
+        playTone(230, 145, 0.14, 'sawtooth', 0.06, 0);
+        playTone(170, 120, 0.14, 'sawtooth', 0.05, 0.09);
+      } else if (name === 'plow_start') {
+        playNoiseBurst(0.16, 480, 0.08, 0);
+        playTone(125, 95, 0.18, 'triangle', 0.07, 0);
+      } else if (name === 'plant_start') {
+        playTone(340, 520, 0.07, 'sine', 0.06, 0);
+        playTone(460, 640, 0.07, 'sine', 0.05, 0.06);
+      } else if (name === 'care_start') {
+        playNoiseBurst(0.18, 1800, 0.065, 0);
+        playTone(620, 440, 0.12, 'sine', 0.04, 0.03);
+      } else if (name === 'harvest_start') {
+        playTone(260, 390, 0.08, 'triangle', 0.06, 0);
+        playNoiseBurst(0.12, 1100, 0.05, 0.05);
+      } else if (name === 'done') {
+        playTone(523.25, 523.25, 0.09, 'triangle', 0.07, 0);
+        playTone(659.25, 659.25, 0.11, 'triangle', 0.07, 0.08);
+        playTone(783.99, 783.99, 0.16, 'triangle', 0.08, 0.16);
+      } else if (name === 'coin') {
+        playTone(987.77, 987.77, 0.07, 'sine', 0.07, 0);
+        playTone(1318.51, 1318.51, 0.16, 'sine', 0.075, 0.065);
+      } else if (name === 'animal') {
+        playTone(210, 165, 0.16, 'sawtooth', 0.055, 0);
+        playTone(175, 195, 0.14, 'triangle', 0.05, 0.14);
+      } else if (name === 'month') {
+        playTone(392, 440, 0.08, 'sine', 0.05, 0);
+        playTone(523.25, 587.33, 0.1, 'sine', 0.05, 0.07);
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('btnSoundToggle');
+      if (btn) {
+        btn.textContent = soundEnabled ? '🔊 Som: ON' : '🔇 Som: OFF';
+        btn.classList.toggle('muted', !soundEnabled);
+      }
+      if (soundEnabled) {
+        playSfx('coin');
+        showToast('Sons ligados');
+      } else {
+        showToast('Sons desligados');
+      }
+    }
+
     const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
     const BASE_PLOW_HA = 360;
     const BASE_CARE_HA = 540;
     const BASE_HARVEST_HA = 460;
 
-    // Durações reais em segundos por 1 hectare (64 blocos)
     const WORK_SECONDS_PER_HA = {
-      plow: 6 * 60,     // 6 min/ha = 360s
-      plant: 10 * 60,   // 10 min/ha = 600s
-      care: 10 * 60,    // 10 min/ha = 600s
-      harvest: 8 * 60   // 8 min/ha = 480s
+      plow: 6 * 60,
+      plant: 10 * 60,
+      care: 10 * 60,
+      harvest: 8 * 60
     };
 
-    // Fator de aceleração das tarefas no modo teste (10s/Mês)
     const TEST_MODE_WORK_SPEEDUP = 20;
 
     function getActiveSpeedMultiplier() {
@@ -1624,6 +1759,7 @@
         state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
         updateHUD();
         renderWorld();
+        playSfx('coin');
         showToast(`✅ Contrato concluído (100%)! Recebeu ${formatBRL(payout)} de ${c.neighbor}.`);
       }
     }
@@ -1873,6 +2009,7 @@
         if (!ha.owned && !isContractHectare(ha.id)) {
           selectedTileKeys.clear();
           selectedHaIdToBuy = ha.id;
+          playSfx('select');
           prepareBuyHectareConfirmation(ha);
           renderWorld();
           return;
@@ -1880,6 +2017,7 @@
         if (ha.owned && getHectareFacilityType(ha)) {
           selectedTileKeys.clear();
           selectedHaIdToBuy = null;
+          playSfx('click');
           openModal('livestock');
           renderWorld();
           return;
@@ -1906,6 +2044,7 @@
       }
 
       if (selectedTileKeys.size > 0) {
+        playSfx('select');
         prepareAreaActionConfirmation();
       } else {
         document.getElementById('confirmCard').classList.remove('open');
@@ -2071,22 +2210,28 @@
 
       if (act.type === 'buy_ha') {
         const ha = state.hectares[act.haId];
-        if (!ha || ha.owned || state.money < ha.price) return;
+        if (!ha || ha.owned || state.money < ha.price) {
+          playSfx('error');
+          return;
+        }
         state.money -= ha.price;
         ha.owned = true;
         clearSelection();
         updateHUD();
         renderWorld();
+        playSfx('coin');
         showToast(`Comprou Hectare (${ha.hc + 1},${ha.hr + 1})!`);
         return;
       }
 
       if (!act.coords || !act.coords.length) {
+        playSfx('error');
         showToast('Nenhum bloco válido e livre selecionado.');
         return;
       }
 
       if (state.money < act.cost) {
+        playSfx('error');
         showToast('Saldo insuficiente para iniciar o serviço.');
         return;
       }
@@ -2094,6 +2239,7 @@
       const busyTiles = getBusyTileSet();
       const freeCoords = act.coords.filter(([tx, ty]) => !busyTiles.has(`${tx},${ty}`));
       if (freeCoords.length === 0) {
+        playSfx('error');
         showToast('Esses blocos já estão com serviço em andamento!');
         return;
       }
@@ -2115,6 +2261,8 @@
       });
 
       const labelMap = { plow: 'Aração', plant: 'Plantio', care: 'Cuidado' };
+      const sfxStartMap = { plow: 'plow_start', plant: 'plant_start', care: 'care_start' };
+      playSfx(sfxStartMap[act.type] || 'click');
       clearSelection();
       updateHUD();
       renderWorld();
@@ -2134,6 +2282,7 @@
           tile.cared = false;
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 24)));
+        playSfx('done');
         showToast(`✅ Aração concluída (${coords.length} blocos)!`);
       } else if (task.type === 'plant') {
         coords.forEach(([tx, ty]) => {
@@ -2153,6 +2302,7 @@
           tile.cared = false;
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 36)));
+        playSfx('done');
         showToast(`✅ Plantio de ${CROPS[task.cropId]?.name || 'cultura'} concluído!`);
       } else if (task.type === 'care') {
         coords.forEach(([tx, ty]) => {
@@ -2165,6 +2315,7 @@
           }
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 28)));
+        playSfx('done');
         showToast(`✅ Cuidado aplicado em ${coords.length} bloco(s)!`);
       } else if (task.type === 'harvest') {
         const wearFactor = Math.max(0.75, 1 - ((state.machineWear || 0) / 250));
@@ -2243,6 +2394,7 @@
         }
 
         const totalSc = Object.values(sacksAdded).reduce((a, b) => a + b, 0);
+        playSfx('done');
         showToast(`✅ Colheita concluída (${totalSc.toFixed(1)} sc p/ Silo)!`);
       }
 
@@ -2276,6 +2428,7 @@
       setTool('harvest');
       if (hasHarvestTaskInProgress()) {
         const hTask = state.activeTasks.find(t => t.type === 'harvest');
+        playSfx('error');
         showToast(`⏳ Colheita já em andamento (${formatDurationSec(hTask?.remainingSeconds || 0)} restantes).`);
         return;
       }
@@ -2301,6 +2454,7 @@
       }
 
       if (ripeTiles.length === 0) {
+        playSfx('error');
         showToast('Nenhuma lavoura madura disponível para colher agora.');
         return;
       }
@@ -2308,6 +2462,7 @@
       const harvestRateHa = getHarvestCostHa();
       const costInt = Math.round(ripeTiles.length * (harvestRateHa / TILES_PER_HA));
       if (state.money < costInt) {
+        playSfx('error');
         showToast(`Saldo insuficiente para colher (${formatBRL(costInt)})!`);
         return;
       }
@@ -2327,6 +2482,7 @@
         costPaid: costInt
       });
 
+      playSfx('harvest_start');
       clearSelection();
       updateHUD();
       renderWorld();
@@ -2469,7 +2625,6 @@
         }
       }
 
-      // Destaque discreto de blocos em trabalho ativo
       (state.activeTasks || []).forEach((task) => {
         (task.tileKeys || []).forEach((key) => {
           const [tx, ty] = key.split(',').map(Number);
@@ -2688,6 +2843,7 @@
     }
 
     canvas.addEventListener('pointerdown', (e) => {
+      getAudioContext();
       canvas.setPointerCapture(e.pointerId);
       activePointers.set(e.pointerId, e);
       const rect = worldViewport.getBoundingClientRect();
@@ -2817,6 +2973,7 @@
     }
 
     function selectCrop(cropId) {
+      playSfx('click');
       selectedCropId = cropId;
       renderCropSelector();
       setTool(currentTool);
@@ -2837,6 +2994,7 @@
         state.year += 1;
       }
 
+      playSfx('month');
       const curSeason = getSeasonInfo(state.monthIndex);
       if (!fromAuto) {
         showToast(`Avançou para ${MONTHS[state.monthIndex]} · Ano ${state.year} (${curSeason.name} acaba em ${curSeason.endsMonth})`);
@@ -2918,6 +3076,7 @@
             pastureQualityMult = Math.min(1.1, Math.max(0.35, basePastureSupport + silageCoverage * 0.65));
 
             if (activeMembers.some(m => m.pastureDegraded)) {
+              playSfx('error');
               showToast('⚠️ Pasto acabou! Revezar para outro piquete (3 meses p/ rebrotar).');
             }
           } else if (silageCoverage >= 0.6) {
@@ -2938,6 +3097,7 @@
           const grainCheck = consumeGrainFromSilo(totalGrainNeeded);
           hasEnoughGrain = grainCheck.ok;
           if (!hasEnoughGrain) {
+            playSfx('error');
             showToast(`⚠️ Sem grãos suficientes no Silo (${totalGrainNeeded.toFixed(1)} sc necessários): porcos/galinhas pausados.`);
           }
         }
@@ -3013,11 +3173,13 @@
         });
 
         if (grazingAnimals.length > 0 && !canSustainGrazing) {
+          playSfx('error');
           showToast('⚠️ Rebanho sem pasto ativo e sem silagem suficiente: produção pausada e sem ganho de peso.');
         }
 
         if (newbornCalves.length > 0) {
           state.cattle.push(...newbornCalves);
+          playSfx('animal');
           showToast(`🐮 Nasceu ${newbornCalves.length} bezerro(s) no rebanho!`);
         }
 
@@ -3058,6 +3220,7 @@
     }
 
     function toggleAuto10s() {
+      playSfx('click');
       const btn = document.getElementById('btnAuto10s');
       if (auto10sTimer) {
         clearInterval(auto10sTimer);
@@ -3120,12 +3283,12 @@
 
         body.innerHTML = `
           <div class="tab-row">
-            <button class="tab-btn ${activeShopTab === 'all' ? 'active' : ''}" onclick="openModal('shop','all')">Todos</button>
-            <button class="tab-btn ${activeShopTab === 'trator' ? 'active' : ''}" onclick="openModal('shop','trator')">Tratores</button>
-            <button class="tab-btn ${activeShopTab === 'colheitadeira' ? 'active' : ''}" onclick="openModal('shop','colheitadeira')">Colheitadeiras</button>
-            <button class="tab-btn ${activeShopTab === 'maquinario' ? 'active' : ''}" onclick="openModal('shop','maquinario')">Implementos</button>
-            <button class="tab-btn ${activeShopTab === 'caminhao' ? 'active' : ''}" onclick="openModal('shop','caminhao')">Caminhões</button>
-            <button class="tab-btn ${isAuctionTab ? 'active' : ''}" onclick="openModal('shop','auction')">🔨 Leilão</button>
+            <button class="tab-btn ${activeShopTab === 'all' ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','all')">Todos</button>
+            <button class="tab-btn ${activeShopTab === 'trator' ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','trator')">Tratores</button>
+            <button class="tab-btn ${activeShopTab === 'colheitadeira' ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','colheitadeira')">Colheitadeiras</button>
+            <button class="tab-btn ${activeShopTab === 'maquinario' ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','maquinario')">Implementos</button>
+            <button class="tab-btn ${activeShopTab === 'caminhao' ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','caminhao')">Caminhões</button>
+            <button class="tab-btn ${isAuctionTab ? 'active' : ''}" onclick="playSfx('click'); openModal('shop','auction')">🔨 Leilão</button>
           </div>
           ${shopIntroHtml}
           ${activeLeasesHtml}
@@ -3188,15 +3351,15 @@
 
         body.innerHTML = `
           <div class="tab-row">
-            <button class="tab-btn ${activeFinanceTab === 'sim' ? 'active' : ''}" onclick="openModal('finance','sim')">Simular Lucro x Parcela</button>
-            <button class="tab-btn ${activeFinanceTab === 'loans' ? 'active' : ''}" onclick="openModal('finance','loans')">Empréstimos (${state.loans.length})</button>
+            <button class="tab-btn ${activeFinanceTab === 'sim' ? 'active' : ''}" onclick="playSfx('click'); openModal('finance','sim')">Simular Lucro x Parcela</button>
+            <button class="tab-btn ${activeFinanceTab === 'loans' ? 'active' : ''}" onclick="playSfx('click'); openModal('finance','loans')">Empréstimos (${state.loans.length})</button>
           </div>
 
           ${activeFinanceTab === 'sim' ? `
             <p>Simule o lucro estimado de cada produto na estação atual (<strong>${getSeasonInfo(state.monthIndex).icon} ${getSeasonInfo(state.monthIndex).name}</strong>, acaba em <strong>${getSeasonInfo(state.monthIndex).endsMonth}</strong>) frente às parcelas cobradas na colheita (<strong>${formatBRL(totalInstallmentPerHarvest)}</strong>).</p>
             <div class="field-row">
               <label><strong>Cultura:</strong></label>
-              <select id="simCrop" onchange="recalcSimulator()">
+              <select id="simCrop" onchange="playSfx('click'); recalcSimulator()">
                 ${CROP_LIST.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
               </select>
               <label><strong>Área (ha):</strong></label>
@@ -3204,7 +3367,7 @@
             </div>
             <div class="field-row">
               <label><strong>Transporte:</strong></label>
-              <select id="simTransport" onchange="recalcSimulator()">
+              <select id="simTransport" onchange="playSfx('click'); recalcSimulator()">
                 <option value="camionete" ${state.transportMode === 'camionete' ? 'selected' : ''}>Camionete (20-70 sc · R$22/sc)</option>
                 <option value="caminhao" ${state.transportMode === 'caminhao' ? 'selected' : ''}>Caminhão Aluguel (500-800 sc · R$8/sc)</option>
               </select>
@@ -3217,7 +3380,7 @@
               <label>Valor (R$):</label>
               <input type="number" id="loanPrincipal" value="15000" step="1000" min="2000" max="${maxLoan}" style="width:95px;" oninput="previewLoanTerms()" />
               <label>Parcelas (Colheitas):</label>
-              <select id="loanInstallments" onchange="previewLoanTerms()">
+              <select id="loanInstallments" onchange="playSfx('click'); previewLoanTerms()">
                 <option value="2">2 colheitas (+4% juros)</option>
                 <option value="3" selected>3 colheitas (+6% juros)</option>
                 <option value="4">4 colheitas (+8% juros)</option>
@@ -3411,7 +3574,7 @@
                     ${p.isActive ? `
                       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid #eadec4;padding-top:6px;">
                         ${otherReadyPaddocks.length > 0 ? `
-                          <select id="destPaddock_${p.id}" style="flex:1;min-width:140px;">
+                          <select id="destPaddock_${p.id}" style="flex:1;min-width:140px;" onchange="playSfx('click')">
                             ${otherReadyPaddocks.map(op => {
                               const opIdx = paddocks.findIndex(x => x.id === op.id) + 1;
                               const opCoords = op.members.map(m => `(${m.hc + 1},${m.hr + 1})`).join('+');
@@ -3444,7 +3607,7 @@
             <div style="display:flex;flex-direction:column;gap:4px;">
               ${hasSilageMaker
                 ? `<button class="action-btn gold" onclick="makeSilageFromCorn(5)">Picar 5 sc Milho</button>`
-                : `<button class="action-btn secondary" onclick="openModal('shop','maquinario')">Ir p/ Loja</button>`
+                : `<button class="action-btn secondary" onclick="playSfx('click'); openModal('shop','maquinario')">Ir p/ Loja</button>`
               }
               <button class="action-btn ${state.useSilageToSavePasture !== false ? '' : 'secondary'}" onclick="toggleSilageFeeding()">
                 ${state.useSilageToSavePasture !== false ? 'Silagem no Cocho: ON' : 'Silagem no Cocho: OFF'}
@@ -3521,7 +3684,7 @@
               <small>Talhão marcado em azul no mapa: <strong>(${state.activeContract.hc + 1},${state.activeContract.hr + 1})</strong> · Pagamento: <strong>${formatBRL(state.activeContract.reward)}</strong></small>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;">
-              <button class="action-btn" onclick="focusContractField()">Ir p/ Talhão</button>
+              <button class="action-btn" onclick="playSfx('click'); focusContractField()">Ir p/ Talhão</button>
               <button class="action-btn danger" onclick="cancelActiveContract()">Cancelar</button>
             </div>
           </div>
@@ -3611,6 +3774,7 @@
 
     function changeTransportMode(newMode) {
       if (TRANSPORT_MODES[newMode]) {
+        playSfx('click');
         state.transportMode = newMode;
         showToast(`Transporte alterado para ${TRANSPORT_MODES[newMode].name}`);
         if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
@@ -3624,6 +3788,7 @@
     function buyMachine(itemId) {
       const item = SHOP_ITEMS.find((i) => i.id === itemId);
       if (!item || (Array.isArray(state.ownedMachines) && state.ownedMachines.includes(itemId)) || state.money < item.price) {
+        playSfx('error');
         showToast('Saldo insuficiente para este equipamento.');
         return;
       }
@@ -3632,6 +3797,7 @@
       state.ownedMachines.push(itemId);
       updateHUD();
       setTool(currentTool);
+      playSfx('coin');
       showToast(`Comprou ${item.name}! Custos reduzidos.`);
       closeModal();
       openModal('shop', activeShopTab);
@@ -3641,6 +3807,7 @@
       const item = SHOP_ITEMS.find((i) => i.id === itemId);
       if (!item || ownsItem(itemId)) return;
       if (state.money < item.rentPerHarvest) {
+        playSfx('error');
         showToast(`Saldo insuficiente para aluguel (${formatBRL(item.rentPerHarvest)}).`);
         return;
       }
@@ -3654,6 +3821,7 @@
       });
       updateHUD();
       setTool(currentTool);
+      playSfx('coin');
       showToast(`Alugou ${item.name} por 2 colheitas!`);
       closeModal();
       openModal('shop', activeShopTab);
@@ -3666,6 +3834,7 @@
       if (!baseItem) return;
       const usedPrice = Math.round(baseItem.price * (1 - lot.discountPct / 100));
       if (state.money < usedPrice) {
+        playSfx('error');
         showToast(`Saldo insuficiente para o leilão (${formatBRL(usedPrice)}).`);
         return;
       }
@@ -3679,6 +3848,7 @@
       state.machineWear = Math.min(100, Math.max(state.machineWear || 0, lot.initialWear));
       updateHUD();
       setTool(currentTool);
+      playSfx('coin');
       showToast(`Arrematou ${baseItem.name} por ${formatBRL(usedPrice)}!`);
       closeModal();
       openModal('shop', 'auction');
@@ -3702,6 +3872,7 @@
 
     function acceptServiceContract(srvId) {
       if (state.activeContract) {
+        playSfx('error');
         showToast('Você já tem um contrato ativo.');
         return;
       }
@@ -3714,6 +3885,7 @@
         return;
       }
 
+      playSfx('done');
       state.activeContract = { ...srv, progress: 0 };
       setupContractField(state.activeContract);
       if (srv.task === 'plant') {
@@ -3726,6 +3898,7 @@
 
     function cancelActiveContract() {
       if (!state.activeContract) return;
+      playSfx('click');
       clearContractField(state.activeContract.haId);
       state.activeContract = null;
       state.availableContracts = generateAvailableContracts(state.hectares, state.monthIndex);
@@ -3767,6 +3940,7 @@
 
     function takeHarvestLoan() {
       if (state.loans.length >= 2) {
+        playSfx('error');
         showToast('Limite atingido: máximo de 2 empréstimos ativos.');
         return;
       }
@@ -3774,6 +3948,7 @@
       const principal = Math.round(Number(document.getElementById('loanPrincipal').value) || 0);
       const installments = Number(document.getElementById('loanInstallments').value) || 3;
       if (principal < 2000 || principal > maxLimit) {
+        playSfx('error');
         showToast(`Valor permitido pelo patrimônio: entre R$ 2.000 e ${formatBRL(maxLimit)}.`);
         return;
       }
@@ -3790,6 +3965,7 @@
       });
 
       updateHUD();
+      playSfx('coin');
       showToast(`Empréstimo aceito: ${calc.inst}x de ${formatBRL(calc.installmentAmount)} após colher.`);
       closeModal();
       openModal('finance', 'loans');
@@ -3801,6 +3977,7 @@
       const loan = state.loans[idx];
       const pay = Math.min(loan.installmentAmount, loan.remainingBalance);
       if (state.money < pay) {
+        playSfx('error');
         showToast('Saldo insuficiente para pagar a parcela.');
         return;
       }
@@ -3811,6 +3988,7 @@
         state.loans.splice(idx, 1);
       }
       updateHUD();
+      playSfx('coin');
       showToast(`Pagou parcela de ${formatBRL(pay)}!`);
       closeModal();
       openModal('finance', 'loans');
@@ -3821,13 +3999,17 @@
     }
 
     function onBackdropClick(e) {
-      if (e.target.id === 'modalBackdrop') closeModal();
+      if (e.target.id === 'modalBackdrop') {
+        playSfx('click');
+        closeModal();
+      }
     }
 
     function sellCrop(cropId) {
       const crop = CROPS[cropId];
       const qty = Number(document.getElementById(`sellQty_${cropId}`).value);
       if (!Number.isFinite(qty) || qty <= 0 || qty > state.silo[cropId] + 1e-6) {
+        playSfx('error');
         showToast('Quantidade inválida no Silo!');
         return;
       }
@@ -3835,6 +4017,7 @@
       if (!ownsItem('caminhao_proprio')) {
         const mode = TRANSPORT_MODES[state.transportMode] || TRANSPORT_MODES.camionete;
         if (qty < mode.minSacks || qty > mode.maxSacks) {
+          playSfx('error');
           showToast(`${mode.name} leva de ${mode.minSacks} a ${mode.maxSacks} sacas por viagem.`);
           return;
         }
@@ -3847,6 +4030,7 @@
       state.silo[cropId] = Math.max(0, +(state.silo[cropId] - qty).toFixed(2));
       state.money += net;
       updateHUD();
+      playSfx('coin');
       showToast(`Vendeu ${qty} sc · Frete ${formatBRL(freight)} · Líquido: ${formatBRL(net)}`);
       closeModal();
       openModal('silo');
@@ -3854,12 +4038,14 @@
 
     function saveGame() {
       localStorage.setItem('fazendaPixelSafraReal_RS_v3', JSON.stringify(state));
+      playSfx('done');
       showToast('Jogo salvo!');
     }
 
     function loadGame() {
       const raw = localStorage.getItem('fazendaPixelSafraReal_RS_v3');
       if (!raw) {
+        playSfx('error');
         showToast('Nenhum save encontrado!');
         return;
       }
@@ -3873,6 +4059,7 @@
       clearSelection();
       updateHUD();
       renderWorld();
+      playSfx('done');
       showToast('Save carregado!');
     }
 
@@ -3883,6 +4070,7 @@
       updateHUD();
       focusMainHectare();
       closeModal();
+      playSfx('click');
       showToast('Fazenda reiniciada!');
     }
 
@@ -3918,6 +4106,7 @@
       const cost = costMap[facilityType] ?? FENCE_COST_HA;
 
       if (state.money < cost) {
+        playSfx('error');
         showToast(`Saldo insuficiente para ${nameMap[facilityType]} (${formatBRL(cost)}).`);
         return;
       }
@@ -3944,6 +4133,7 @@
       }
       updateHUD();
       renderWorld();
+      playSfx('done');
       showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) transformado em ${nameMap[facilityType]}!`);
       openModal('livestock');
     }
@@ -3958,6 +4148,7 @@
         const pastureCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture').length;
         const hasGrazing = (state.cattle || []).some(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture');
         if (pastureCount <= 1 && hasGrazing) {
+          playSfx('error');
           showToast('Venda ou transfira os animais de pasto antes de remover o último pasto.');
           return;
         }
@@ -3974,6 +4165,7 @@
         const coopCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'coop').length;
         const chickenCount = (state.cattle || []).filter(a => a.type === 'galinha').length;
         if (coopCount <= 1 && chickenCount > 0) {
+          playSfx('error');
           showToast('Venda as galinhas antes de remover o último galinheiro.');
           return;
         }
@@ -3982,12 +4174,14 @@
         const styCount = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'sty').length;
         const pigCount = (state.cattle || []).filter(a => a.type === 'porco').length;
         if (styCount <= 1 && pigCount > 0) {
+          playSfx('error');
           showToast('Venda os porcos antes de remover o último chiqueiro.');
           return;
         }
         setHectareFacility(ha, null);
       }
 
+      playSfx('click');
       renderWorld();
       showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) voltou para lavoura.`);
       openModal('livestock');
@@ -4008,6 +4202,7 @@
         }
       });
 
+      playSfx('done');
       renderWorld();
       showToast(`Pastos juntados (${pA.areaHa + pB.areaHa} ha)!`);
       openModal('livestock');
@@ -4025,6 +4220,7 @@
         }
       });
 
+      playSfx('click');
       renderWorld();
       showToast('Pastos separados novamente em hectares individuais!');
       openModal('livestock');
@@ -4035,6 +4231,7 @@
       const dest = paddocks.find(p => p.id === destPaddockId);
       if (!dest) return;
       if (dest.isDegraded) {
+        playSfx('error');
         showToast(`Este pasto precisa de descanso (${dest.restMonths}/3 meses) para rebrotar.`);
         return;
       }
@@ -4042,6 +4239,7 @@
         const isDest = (p.id === destPaddockId);
         p.members.forEach(m => { m.pastureActive = isDest; });
       });
+      playSfx('animal');
       renderWorld();
       showToast(`Rebanho movido para o pasto selecionado (${dest.areaHa} ha)!`);
       openModal('livestock');
@@ -4051,6 +4249,7 @@
       const sel = document.getElementById(`destPaddock_${sourcePaddockId}`);
       const destId = sel ? Number(sel.value) : null;
       if (destId == null || Number.isNaN(destId)) {
+        playSfx('error');
         showToast('Selecione para qual pasto deseja mover os animais.');
         return;
       }
@@ -4058,6 +4257,7 @@
     }
 
     function toggleSilageFeeding() {
+      playSfx('click');
       state.useSilageToSavePasture = !(state.useSilageToSavePasture !== false);
       showToast(state.useSilageToSavePasture ? 'Silagem liberada no cocho (poupa o pasto)' : 'Uso de silagem pausado');
       openModal('livestock');
@@ -4065,17 +4265,20 @@
 
     function makeSilageFromCorn(sacksToUse) {
       if (!ownsItem('ensiladeira_forragem')) {
+        playSfx('error');
         showToast('Compre ou alugue a Ensiladeira na Loja primeiro.');
         return;
       }
       const avail = state.silo.milho || 0;
       const qty = Math.min(avail, sacksToUse);
       if (qty < 1) {
+        playSfx('error');
         showToast('Você precisa de pelo menos 1 saca de Milho no silo.');
         return;
       }
       const cost = Math.round(qty * SILAGE_PROCESS_COST_PER_SACK);
       if (state.money < cost) {
+        playSfx('error');
         showToast(`Saldo insuficiente para picar silagem (${formatBRL(cost)}).`);
         return;
       }
@@ -4084,6 +4287,7 @@
       const kgAdded = Math.round(qty * SILAGE_KG_PER_CORN_SACK);
       state.silageKg = (state.silageKg || 0) + kgAdded;
       updateHUD();
+      playSfx('done');
       showToast(`Produziu ${kgAdded} kg de silagem com ${qty.toFixed(1)} sc de milho!`);
       openModal('livestock');
     }
@@ -4096,10 +4300,12 @@
         const cap = getCoopCapacity();
         const curCount = (state.cattle || []).filter(a => a.type === 'galinha').length;
         if (cap <= 0) {
+          playSfx('error');
           showToast('Transforme ao menos 1 hectare em Galinheiro antes de comprar galinhas.');
           return;
         }
         if (curCount + 1 > cap) {
+          playSfx('error');
           showToast(`Galinheiro cheio (${cap} galinhas). Transforme outro hectare em Galinheiro.`);
           return;
         }
@@ -4107,16 +4313,19 @@
         const cap = getStyCapacity();
         const curCount = (state.cattle || []).filter(a => a.type === 'porco').length;
         if (cap <= 0) {
+          playSfx('error');
           showToast('Transforme ao menos 1 hectare em Chiqueiro antes de comprar porcos.');
           return;
         }
         if (curCount + 1 > cap) {
+          playSfx('error');
           showToast(`Chiqueiro cheio (${cap} porcos). Transforme outro hectare em Chiqueiro.`);
           return;
         }
       } else {
         const paddocks = getPasturePaddocks();
         if (paddocks.length === 0) {
+          playSfx('error');
           showToast('Transforme ao menos 1 hectare em Pasto antes de comprar bois, vacas ou ovelhas.');
           return;
         }
@@ -4126,12 +4335,14 @@
         const addedUA = Math.max(0.05, +(spec.uaWeight * Math.max(0.5, spec.startArrobas / (spec.startArrobas || 5))).toFixed(2));
         const nextUA = getTotalHerdUA() + addedUA;
         if (nextUA > maxUAWithSilage + 0.1) {
+          playSfx('error');
           showToast(`Lotação limite (${UA_CAPACITY_PER_HA} UA/ha)! Abra mais pasto ou produza silagem.`);
           return;
         }
       }
 
       if (state.money < spec.buyPrice) {
+        playSfx('error');
         showToast(`Saldo insuficiente (${formatBRL(spec.buyPrice)}).`);
         return;
       }
@@ -4147,6 +4358,7 @@
       });
       updateHUD();
       renderWorld();
+      playSfx('animal');
       showToast(`Comprou ${spec.name}!`);
       openModal('livestock');
     }
@@ -4157,6 +4369,7 @@
       const animal = state.cattle[idx];
       const spec = LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES.boi;
       if (mode === 'butcher' && animal.arrobas < spec.minButcherArrobas) {
+        playSfx('error');
         showToast(`Peso mínimo para açougue: ${spec.minButcherArrobas}@.`);
         return;
       }
@@ -4168,6 +4381,7 @@
       state.money += net;
       updateHUD();
       renderWorld();
+      playSfx('coin');
       showToast(`Vendeu (${mode === 'butcher' ? 'Açougue' : 'Vivo Criação'}) por ${formatBRL(net)} líquido!`);
       openModal('livestock');
     }
@@ -4175,6 +4389,7 @@
     function sellAllMilk() {
       const liters = state.milkLiters || 0;
       if (liters < 10) {
+        playSfx('error');
         showToast('Mínimo de 10 litros no tanque para coleta.');
         return;
       }
@@ -4183,6 +4398,7 @@
       state.milkLiters = 0;
       state.money += net;
       updateHUD();
+      playSfx('coin');
       showToast(`Vendeu ${liters.toFixed(0)} L de leite por ${formatBRL(net)} líquido!`);
       openModal('livestock');
     }
@@ -4190,6 +4406,7 @@
     function sellAllWool() {
       const kg = state.woolKg || 0;
       if (kg < 0.5) {
+        playSfx('error');
         showToast('Mínimo de 0.5 kg de lã para venda.');
         return;
       }
@@ -4197,6 +4414,7 @@
       state.woolKg = 0;
       state.money += net;
       updateHUD();
+      playSfx('coin');
       showToast(`Vendeu ${kg.toFixed(2)} kg de lã por ${formatBRL(net)}!`);
       openModal('livestock');
     }
@@ -4204,6 +4422,7 @@
     function sellAllEggs() {
       const dz = state.eggsDozens || 0;
       if (dz < 1) {
+        playSfx('error');
         showToast('Mínimo de 1 dúzia de ovos para venda.');
         return;
       }
@@ -4211,6 +4430,7 @@
       state.eggsDozens = 0;
       state.money += net;
       updateHUD();
+      playSfx('coin');
       showToast(`Vendeu ${dz.toFixed(1)} dúzias de ovos por ${formatBRL(net)}!`);
       openModal('livestock');
     }
@@ -4218,17 +4438,20 @@
     function repairMachinery() {
       const wear = state.machineWear || 0;
       if (wear <= 0) {
+        playSfx('click');
         showToast('Máquinas já estão revisadas.');
         return;
       }
       const cost = Math.max(1500, wear * 180);
       if (state.money < cost) {
+        playSfx('error');
         showToast(`Saldo insuficiente para revisão (${formatBRL(cost)}).`);
         return;
       }
       state.money -= cost;
       state.machineWear = 0;
       updateHUD();
+      playSfx('done');
       showToast(`Oficina concluída (${formatBRL(cost)})! Eficiência 100%.`);
       closeModal();
       openModal('save');
