@@ -1916,7 +1916,8 @@
       return {
         money: INITIAL_CASH,
         calendarMonth: new Date().getMonth() + 1,
-        lastSavedAt: null,
+        lastSavedAt: Date.now(),
+        lastTickAt: Date.now(),
         transportMode: 'camionete',
         ownedMachines: [],
         leasedMachines: [],
@@ -1966,7 +1967,9 @@
 
     function autoSaveGame() {
       try {
-        state.lastSavedAt = Date.now();
+        const now = Date.now();
+        state.lastSavedAt = now;
+        state.lastTickAt = now;
         localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(state));
       } catch (_) {}
     }
@@ -2860,13 +2863,16 @@
     }
 
     function tickBackgroundWork(elapsedSec = 1) {
-      if (!Array.isArray(state.activeTasks) || state.activeTasks.length === 0) return;
+      const safeElapsed = Math.max(0, Number(elapsedSec) || 0);
+      state.lastTickAt = Date.now();
+      if (safeElapsed <= 0) return false;
+      if (!Array.isArray(state.activeTasks) || state.activeTasks.length === 0) return false;
 
       let anyCompleted = false;
       const stillRunning = [];
 
       state.activeTasks.forEach(task => {
-        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - elapsedSec);
+        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - safeElapsed);
         if (task.remainingSeconds <= 0) {
           finalizeCompletedTask(task);
           anyCompleted = true;
@@ -2879,6 +2885,28 @@
       if (anyCompleted) {
         updateHUD();
         renderWorld();
+      }
+      return anyCompleted;
+    }
+
+    function applyElapsedOfflineTime(reasonToast = true) {
+      const now = Date.now();
+      const prevTs = Number(state.lastTickAt || state.lastSavedAt || now);
+      const elapsedSec = Math.floor((now - prevTs) / 1000);
+      state.lastTickAt = now;
+
+      if (elapsedSec > 1 && Array.isArray(state.activeTasks) && state.activeTasks.length > 0) {
+        const hadTasks = state.activeTasks.length;
+        tickBackgroundWork(elapsedSec);
+        autoSaveGame();
+        if (reasonToast) {
+          const finishedCount = Math.max(0, hadTasks - (state.activeTasks || []).length);
+          if (finishedCount > 0) {
+            showToast(`⏱️ ${formatDurationSec(elapsedSec)} fora: ${finishedCount} serviço(s) concluído(s)!`);
+          } else {
+            showToast(`⏱️ ${formatDurationSec(elapsedSec)} descontados nos serviços em andamento.`);
+          }
+        }
       }
     }
 
@@ -3589,7 +3617,7 @@
         body.innerHTML = `
           <p><strong>1. Terra & Caixa (RS):</strong> Hectares custam entre <strong>R$ 68 mil e R$ 118 mil</strong> (padrão RS) e o caixa inicial é <strong>${formatBRL(INITIAL_CASH)}</strong>. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
           <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender na janela ideal paga <strong>+22% por saca</strong>.</p>
-          <p><strong>3. Save Automático & App Instalável:</strong> Seu progresso salva sozinho a cada ação e pode ser exportado em arquivo <strong>.json</strong> ou instalado na tela inicial do celular pelo menu <strong>💾 App</strong>.</p>
+          <p><strong>3. Tempo Fora do Jogo & Save:</strong> O tempo dos serviços continua contando quando você sai ou minimiza o app, com auto-save e backup <strong>.json</strong> em <strong>💾 App</strong>.</p>
           <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾 App</strong> para reforçar o caixa.</p>
         `;
       } else if (type === 'shop') {
@@ -4391,6 +4419,7 @@
             throw new Error('Formato inválido');
           }
           state = normalizeLoadedState(parsed);
+          applyElapsedOfflineTime(false);
           autoSaveGame();
           clearSelection();
           updateHUD();
@@ -4815,6 +4844,8 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
 
+    applyElapsedOfflineTime(true);
+
     let autoSaveTickCounter = 0;
     setInterval(() => {
       tickBackgroundWork(1);
@@ -4827,10 +4858,13 @@
       }
     }, 1000);
 
+    window.addEventListener('pagehide', autoSaveGame);
     window.addEventListener('beforeunload', autoSaveGame);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         autoSaveGame();
+      } else if (document.visibilityState === 'visible') {
+        applyElapsedOfflineTime(true);
       }
     });
     window.addEventListener('resize', resizeCanvas);
