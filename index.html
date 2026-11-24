@@ -728,7 +728,7 @@
         </div>
 
         <div class="top-controls-right">
-          <div class="cream-btn" style="cursor:default;" title="Mês atual">
+          <div class="cream-btn" style="cursor:default;" title="Mês atual (1 mês = 2h)">
             📅 <span id="hudSeasonLabel">Nov · Verão</span>
           </div>
           <button class="cream-btn" id="btnSoundToggle" onclick="toggleSound()" title="Ligar ou desligar sons do jogo">
@@ -844,7 +844,7 @@
       </div>
 
       <div class="hint-bar" id="hintBar">
-        Arar: R$ 260/ha · 6 min/ha
+        Arar: R$ 260/ha · 30s/ha
       </div>
     </footer>
   </div>
@@ -867,7 +867,7 @@
     /* =========================================================================
        PWA / APP INSTALÁVEL (ÍCONE + MANIFEST + SERVICE WORKER + PROMPT)
        ========================================================================= */
-    const SAVE_STORAGE_KEY = 'fazendaPixelSafraReal_RS_v5';
+    const SAVE_STORAGE_KEY = 'fazendaPixelSafraReal_RS_v6';
     let deferredInstallPrompt = null;
     let isAppInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
@@ -1094,11 +1094,13 @@
     const BASE_CARE_HA = 380;
     const BASE_HARVEST_HA = 340;
 
+    // 1 mês = 2 horas (7200s); todos os tempos de serviço divididos por 12
+    const MONTH_SECONDS = 2 * 3600;
     const WORK_SECONDS_PER_HA = {
-      plow: 6 * 60,
-      plant: 10 * 60,
-      care: 10 * 60,
-      harvest: 8 * 60
+      plow: Math.round((6 * 60) / 12),    // 30s/ha
+      plant: Math.round((10 * 60) / 12),  // 50s/ha
+      care: Math.round((10 * 60) / 12),   // 50s/ha
+      harvest: Math.round((8 * 60) / 12)  // 40s/ha
     };
 
     const MONTHS = [
@@ -1631,15 +1633,19 @@
 
     function formatDurationSec(totalSec) {
       const s = Math.max(1, Math.ceil(totalSec));
-      const mins = Math.floor(s / 60);
+      const hours = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
       const rem = s % 60;
+      if (hours > 0) {
+        return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
+      }
       if (mins <= 0) return `${rem}s`;
       return rem === 0 ? `${mins} min` : `${mins}m ${String(rem).padStart(2, '0')}s`;
     }
 
     function getWorkDurationSeconds(taskType, areaHa) {
-      const rate = WORK_SECONDS_PER_HA[taskType] || 300;
-      return Math.max(5, Math.round(areaHa * rate));
+      const rate = WORK_SECONDS_PER_HA[taskType] || 30;
+      return Math.max(2, Math.round(areaHa * rate));
     }
 
     function ownsItem(itemId) {
@@ -1792,22 +1798,26 @@
             t.cropId = null;
             t.ripe = false;
             t.cared = false;
+            t.growthMonths = 0;
           } else if (contract.task === 'plant') {
             t.state = 'plowed';
             t.cropId = null;
             t.ripe = false;
             t.cared = false;
+            t.growthMonths = 0;
           } else if (contract.task === 'care') {
             t.state = 'planted';
             t.cropId = contract.cropId;
             t.ripe = false;
             t.cared = false;
+            t.growthMonths = 1;
           } else if (contract.task === 'harvest') {
             const c = CROPS[contract.cropId] || CROPS.soja;
             t.state = 'planted';
             t.cropId = c.id;
             t.ripe = true;
             t.cared = true;
+            t.growthMonths = c.monthsToGrow || 3;
           }
         }
       }
@@ -1825,6 +1835,7 @@
             cropId: null,
             ripe: false,
             cared: false,
+            growthMonths: 0,
             lastCropId: null,
             monocultureCount: 0,
             plantedMonth: null
@@ -1868,6 +1879,26 @@
       }
     }
 
+    function advanceCalendarMonths(monthsPassed) {
+      if (!monthsPassed || monthsPassed <= 0) return;
+      const mCount = Math.floor(monthsPassed);
+      state.calendarMonth = (((Number(state.calendarMonth || 11) - 1 + mCount) % 12) + 1);
+
+      const careBonusMonths = mCount;
+      for (let i = 0; i < state.tiles.length; i++) {
+        const t = state.tiles[i];
+        if (!t || t.state !== 'planted' || !t.cropId) continue;
+        const crop = CROPS[t.cropId];
+        if (!crop) continue;
+        const needed = crop.monthsToGrow || 3;
+        const step = t.cared ? (mCount + Math.floor(careBonusMonths * 0.25)) : mCount;
+        t.growthMonths = Math.min(needed, (Number(t.growthMonths) || 0) + Math.max(1, step));
+        if (t.growthMonths >= needed) {
+          t.ripe = true;
+        }
+      }
+    }
+
     function createInitialState() {
       const hectares = [];
       for (let hr = 0; hr < HA_ROWS; hr++) {
@@ -1904,18 +1935,19 @@
           const isPlanted = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6) && !(lx >= 3 && lx <= 6 && ly === 3);
           const isPlowed = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6);
           if (isPlanted) {
-            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, lastCropId: null, monocultureCount: 0, plantedMonth: 11 };
+            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, growthMonths: 3, lastCropId: null, monocultureCount: 0, plantedMonth: 11 };
           }
           if (isPlowed) {
-            return { state: 'plowed', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
+            return { state: 'plowed', cropId: null, ripe: false, cared: false, growthMonths: 0, lastCropId: null, monocultureCount: 0, plantedMonth: null };
           }
         }
-        return { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
+        return { state: 'raw', cropId: null, ripe: false, cared: false, growthMonths: 0, lastCropId: null, monocultureCount: 0, plantedMonth: null };
       });
 
       return {
         money: INITIAL_CASH,
         calendarMonth: new Date().getMonth() + 1,
+        monthProgressSeconds: 0,
         lastSavedAt: Date.now(),
         lastTickAt: Date.now(),
         transportMode: 'camionete',
@@ -1944,6 +1976,7 @@
       const fresh = createInitialState();
       const merged = Object.assign({}, fresh, parsed);
       merged.silo = Object.assign({}, fresh.silo, parsed?.silo || {});
+      if (typeof merged.monthProgressSeconds !== 'number') merged.monthProgressSeconds = 0;
       if (!Array.isArray(merged.activeTasks)) merged.activeTasks = [];
       if (!Array.isArray(merged.cattle)) merged.cattle = [];
       if (!Array.isArray(merged.loans)) merged.loans = [];
@@ -1961,6 +1994,16 @@
       }
       if (!Array.isArray(merged.tiles) || merged.tiles.length !== fresh.tiles.length) {
         merged.tiles = fresh.tiles;
+      } else {
+        merged.tiles.forEach(t => {
+          if (t && t.state === 'planted' && t.cropId) {
+            const needed = CROPS[t.cropId]?.monthsToGrow || 3;
+            if (typeof t.growthMonths !== 'number') {
+              t.growthMonths = t.ripe ? needed : 0;
+            }
+            t.ripe = t.growthMonths >= needed;
+          }
+        });
       }
       return merged;
     }
@@ -2594,10 +2637,10 @@
             : (econ.seasonYieldMult < 1 ? ` · ⚠️ Fora da época (${crop.plantWindowLabel})` : ` · 🌿 Janela regular (${crop.plantWindowLabel})`);
 
           boxesHtml = `
-            <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
+            <div class="summary-box"><span>Plantio (${formatDurationSec(durationSec)})</span><strong>Cresce ${crop.monthsToGrow}m</strong></div>
             <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
           `;
-          subText = `Custo: ${formatBRL(econ.plantCost)} · Est. ${econ.sacks.toFixed(1)} sc · Venda ideal: ${crop.bestSellLabel}${seasonTag}${rotNote}${busyNote}.`;
+          subText = `Leva ${crop.monthsToGrow} meses (2h/mês) após semear · Custo: ${formatBRL(econ.plantCost)} · Est. ${econ.sacks.toFixed(1)} sc${seasonTag}${rotNote}${busyNote}.`;
         }
       } else if (currentTool === 'plow') {
         eligible = coords.filter(([tx, ty]) => {
@@ -2617,7 +2660,7 @@
           <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Operacional</span><strong>${formatBRL(actionCost)}</strong></div>
         `;
-        subText = `Ritmo: 6 min/ha · Custo: ${formatBRL(getPlowCostHa())}/ha${busyNote}.`;
+        subText = `Ritmo: ${WORK_SECONDS_PER_HA.plow}s/ha · Custo: ${formatBRL(getPlowCostHa())}/ha${busyNote}.`;
       } else if (currentTool === 'care') {
         eligible = coords.filter(([tx, ty]) => {
           const t = state.tiles[ty * TOTAL_TILE_COLS + tx];
@@ -2636,7 +2679,7 @@
           <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
           <div class="summary-box"><span>Custo Insumo/Máquina</span><strong>${formatBRL(actionCost)}</strong></div>
         `;
-        subText = `Ritmo: 10 min/ha · Custo: ${formatBRL(getCareCostHa())}/ha${busyNote}.`;
+        subText = `Ritmo: ${WORK_SECONDS_PER_HA.care}s/ha · Custo: ${formatBRL(getCareCostHa())}/ha${busyNote}.`;
       }
 
       const canAfford = eligible.length > 0 && state.money >= actionCost;
@@ -2739,11 +2782,13 @@
           tile.cropId = null;
           tile.ripe = false;
           tile.cared = false;
+          tile.growthMonths = 0;
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 24)));
         playSfx('done');
         showToast(`✅ Aração concluída (${coords.length} blocos)!`);
       } else if (task.type === 'plant') {
+        const cropSpec = CROPS[task.cropId] || CROPS.soja;
         coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
           if (!tile) return;
@@ -2758,19 +2803,21 @@
           }
           tile.state = 'planted';
           tile.cropId = task.cropId;
-          tile.ripe = true;
+          tile.growthMonths = 0;
+          tile.ripe = false;
           tile.cared = false;
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 36)));
         playSfx('done');
-        showToast(`✅ Plantio de ${CROPS[task.cropId]?.name || 'cultura'} concluído e pronto p/ colher!`);
+        showToast(`🌱 ${cropSpec.name} semeado! Cresce em ${cropSpec.monthsToGrow} meses (2h/mês).`);
       } else if (task.type === 'care') {
         coords.forEach(([tx, ty]) => {
           const tile = state.tiles[ty * TOTAL_TILE_COLS + tx];
           if (!tile) return;
           if (tile.state === 'planted' && tile.cropId) {
             tile.cared = true;
-            tile.ripe = true;
+            const needed = CROPS[tile.cropId]?.monthsToGrow || 3;
+            tile.ripe = (Number(tile.growthMonths) || 0) >= needed;
           }
         });
         addMachineWear(Math.max(1, Math.round(coords.length / 28)));
@@ -2807,6 +2854,7 @@
           tile.cropId = null;
           tile.ripe = false;
           tile.cared = false;
+          tile.growthMonths = 0;
           tile.plantedMonth = null;
         });
 
@@ -2866,27 +2914,37 @@
       const safeElapsed = Math.max(0, Number(elapsedSec) || 0);
       state.lastTickAt = Date.now();
       if (safeElapsed <= 0) return false;
-      if (!Array.isArray(state.activeTasks) || state.activeTasks.length === 0) return false;
 
-      let anyCompleted = false;
-      const stillRunning = [];
+      let changed = false;
 
-      state.activeTasks.forEach(task => {
-        task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - safeElapsed);
-        if (task.remainingSeconds <= 0) {
-          finalizeCompletedTask(task);
-          anyCompleted = true;
-        } else {
-          stillRunning.push(task);
-        }
-      });
+      // Avança calendário (1 mês = 2 horas = 7200s) e crescimento das plantas
+      state.monthProgressSeconds = (Number(state.monthProgressSeconds) || 0) + safeElapsed;
+      if (state.monthProgressSeconds >= MONTH_SECONDS) {
+        const monthsGained = Math.floor(state.monthProgressSeconds / MONTH_SECONDS);
+        state.monthProgressSeconds = state.monthProgressSeconds % MONTH_SECONDS;
+        advanceCalendarMonths(monthsGained);
+        changed = true;
+      }
 
-      state.activeTasks = stillRunning;
-      if (anyCompleted) {
+      if (Array.isArray(state.activeTasks) && state.activeTasks.length > 0) {
+        const stillRunning = [];
+        state.activeTasks.forEach(task => {
+          task.remainingSeconds = Math.max(0, (task.remainingSeconds ?? task.totalSeconds) - safeElapsed);
+          if (task.remainingSeconds <= 0) {
+            finalizeCompletedTask(task);
+            changed = true;
+          } else {
+            stillRunning.push(task);
+          }
+        });
+        state.activeTasks = stillRunning;
+      }
+
+      if (changed) {
         updateHUD();
         renderWorld();
       }
-      return anyCompleted;
+      return changed;
     }
 
     function applyElapsedOfflineTime(reasonToast = true) {
@@ -2895,15 +2953,17 @@
       const elapsedSec = Math.floor((now - prevTs) / 1000);
       state.lastTickAt = now;
 
-      if (elapsedSec > 1 && Array.isArray(state.activeTasks) && state.activeTasks.length > 0) {
-        const hadTasks = state.activeTasks.length;
+      if (elapsedSec > 1) {
+        const hadTasks = (state.activeTasks || []).length;
+        const prevMonth = state.calendarMonth;
         tickBackgroundWork(elapsedSec);
         autoSaveGame();
         if (reasonToast) {
           const finishedCount = Math.max(0, hadTasks - (state.activeTasks || []).length);
-          if (finishedCount > 0) {
-            showToast(`⏱️ ${formatDurationSec(elapsedSec)} fora: ${finishedCount} serviço(s) concluído(s)!`);
-          } else {
+          const monthChanged = state.calendarMonth !== prevMonth;
+          if (finishedCount > 0 || monthChanged) {
+            showToast(`⏱️ ${formatDurationSec(elapsedSec)} fora: ${finishedCount} serviço(s) concluído(s)${monthChanged ? ` · Mês: ${getCurrentMonthObj().short}` : ''}!`);
+          } else if (hadTasks > 0) {
             showToast(`⏱️ ${formatDurationSec(elapsedSec)} descontados nos serviços em andamento.`);
           }
         }
@@ -2938,7 +2998,7 @@
 
       if (ripeTiles.length === 0) {
         playSfx('error');
-        showToast('Nenhuma lavoura pronta para colher agora.');
+        showToast('Nenhuma lavoura madura pronta para colher agora.');
         return;
       }
 
@@ -2977,7 +3037,7 @@
     /* =========================================================================
        RENDERIZAÇÃO DO MUNDO COM TEXTURAS PINTADAS E SPRITES 3D
        ========================================================================= */
-    function drawCrop3D(x, y, size, crop, isRipe, cared) {
+    function drawCrop3D(x, y, size, crop, isRipe, cared, growthRatio = 1) {
       const cx = x + size * 0.5;
       const cy = y + size * 0.54;
 
@@ -2992,7 +3052,8 @@
       ctx.ellipse(cx, y + size * 0.8, size * 0.3, size * 0.11, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const scale = (size / 40) * (isRipe ? 1.0 : 0.82);
+      const clampedRatio = Math.max(0.25, Math.min(1, growthRatio));
+      const scale = (size / 40) * (isRipe ? 1.0 : (0.48 + clampedRatio * 0.42));
       ctx.save();
       ctx.translate(cx, cy);
       ctx.scale(scale, scale);
@@ -3010,31 +3071,33 @@
         ctx.stroke();
       });
 
-      const earGrad = ctx.createLinearGradient(-5, -15, 6, 6);
-      if (crop.id === 'milho' || crop.id === 'trigo' || crop.id === 'aveia') {
-        earGrad.addColorStop(0, isRipe ? '#fff066' : '#d9f054');
-        earGrad.addColorStop(1, isRipe ? '#d98a0b' : '#73a825');
-      } else if (crop.id === 'sorgo') {
-        earGrad.addColorStop(0, '#ff8a4c');
-        earGrad.addColorStop(1, '#a83414');
-      } else {
-        earGrad.addColorStop(0, isRipe ? '#ffe64d' : leafHighlight);
-        earGrad.addColorStop(1, isRipe ? '#c48f12' : '#3a7d19');
+      if (clampedRatio >= 0.4 || isRipe) {
+        const earGrad = ctx.createLinearGradient(-5, -15, 6, 6);
+        if (crop.id === 'milho' || crop.id === 'trigo' || crop.id === 'aveia') {
+          earGrad.addColorStop(0, isRipe ? '#fff066' : '#d9f054');
+          earGrad.addColorStop(1, isRipe ? '#d98a0b' : '#73a825');
+        } else if (crop.id === 'sorgo') {
+          earGrad.addColorStop(0, '#ff8a4c');
+          earGrad.addColorStop(1, '#a83414');
+        } else {
+          earGrad.addColorStop(0, isRipe ? '#ffe64d' : leafHighlight);
+          earGrad.addColorStop(1, isRipe ? '#c48f12' : '#3a7d19');
+        }
+
+        ctx.fillStyle = earGrad;
+        ctx.strokeStyle = isRipe ? '#6e4304' : '#234a0d';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(0, -5, 5.2, 10.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.beginPath();
+        ctx.arc(-1.5, -8, 1.4, 0, Math.PI * 2);
+        ctx.arc(1.5, -4, 1.4, 0, Math.PI * 2);
+        ctx.fill();
       }
-
-      ctx.fillStyle = earGrad;
-      ctx.strokeStyle = isRipe ? '#6e4304' : '#234a0d';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.ellipse(0, -5, 5.2, 10.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.beginPath();
-      ctx.arc(-1.5, -8, 1.4, 0, Math.PI * 2);
-      ctx.arc(1.5, -4, 1.4, 0, Math.PI * 2);
-      ctx.fill();
 
       ctx.restore();
 
@@ -3230,8 +3293,12 @@
             ctx.drawImage(SPRITE_ATLAS.soilPlowed, x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'planted') {
             const crop = CROPS[tile.cropId] || CROPS.soja;
+            const needed = crop.monthsToGrow || 3;
+            const gMonths = Number(tile.growthMonths) || 0;
+            const isRipe = Boolean(tile.ripe || gMonths >= needed);
+            const ratio = isRipe ? 1 : (gMonths + (Number(state.monthProgressSeconds || 0) / MONTH_SECONDS)) / needed;
             ctx.drawImage(SPRITE_ATLAS.soilPlanted, x, y, TILE_PX, TILE_PX);
-            drawCrop3D(x, y, TILE_PX, crop, tile.ripe, tile.cared);
+            drawCrop3D(x, y, TILE_PX, crop, isRipe, tile.cared, ratio);
           }
         }
       }
@@ -3579,10 +3646,10 @@
       const activeCount = (state.activeTasks || []).length;
       const activeSuffix = activeCount > 0 ? ` · ${activeCount} em andamento` : '';
       const hints = {
-        plow: `Arar: ${formatBRL(getPlowCostHa())}/ha · 6 min/ha${activeSuffix}`,
-        plant: `${crop.name} (${mObj.short}): ${formatBRL(crop.plantCostHa)}/ha · ${yLabel} · Venda: ${crop.bestSellLabel}${activeSuffix}`,
-        care: `Cuidar: ${formatBRL(getCareCostHa())}/ha · 10 min/ha${activeSuffix}`,
-        harvest: `Colher Tudo: 8 min/ha p/ o Silo${activeSuffix}`
+        plow: `Arar: ${formatBRL(getPlowCostHa())}/ha · ${WORK_SECONDS_PER_HA.plow}s/ha${activeSuffix}`,
+        plant: `${crop.name} (${mObj.short}): ${formatBRL(crop.plantCostHa)}/ha · ${crop.monthsToGrow}m (2h/mês) · ${yLabel}${activeSuffix}`,
+        care: `Cuidar: ${formatBRL(getCareCostHa())}/ha · ${WORK_SECONDS_PER_HA.care}s/ha${activeSuffix}`,
+        harvest: `Colher Tudo: ${WORK_SECONDS_PER_HA.harvest}s/ha p/ o Silo${activeSuffix}`
       };
       document.getElementById('hintBar').textContent = hints[tool] || '';
 
@@ -3602,7 +3669,7 @@
       document.getElementById('cropSelectorBar').innerHTML = CROP_LIST.map((c) => `
         <button class="crop-chip ${c.id === selectedCropId ? 'selected' : ''}" onclick="selectCrop('${c.id}')">
           <span>🌱</span>
-          <span>${c.name} (${formatBRL(c.plantCostHa)}/ha · Venda ${c.bestSellLabel})</span>
+          <span>${c.name} (${c.monthsToGrow}m · ${formatBRL(c.plantCostHa)}/ha)</span>
         </button>
       `).join('');
     }
@@ -3615,10 +3682,10 @@
       if (type === 'help') {
         title.textContent = '❓ Como Jogar · Safra Real (RS)';
         body.innerHTML = `
-          <p><strong>1. Terra & Caixa (RS):</strong> Hectares custam entre <strong>R$ 68 mil e R$ 118 mil</strong> (padrão RS) e o caixa inicial é <strong>${formatBRL(INITIAL_CASH)}</strong>. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
-          <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender na janela ideal paga <strong>+22% por saca</strong>.</p>
-          <p><strong>3. Tempo Fora do Jogo & Save:</strong> O tempo dos serviços continua contando quando você sai ou minimiza o app, com auto-save e backup <strong>.json</strong> em <strong>💾 App</strong>.</p>
-          <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾 App</strong> para reforçar o caixa.</p>
+          <p><strong>1. Tempo & Meses (1 mês = 2h):</strong> Cada mês do calendário dura <strong>2 horas</strong>. Após semear, as culturas crescem mês a mês até atingir seu ciclo (<strong>3 a 4 meses</strong>) antes de ficarem prontas para colher.</p>
+          <p><strong>2. Tempos de Serviço:</strong> Arar <strong>${WORK_SECONDS_PER_HA.plow}s/ha</strong>, Plantar <strong>${WORK_SECONDS_PER_HA.plant}s/ha</strong>, Cuidar <strong>${WORK_SECONDS_PER_HA.care}s/ha</strong> e Colher <strong>${WORK_SECONDS_PER_HA.harvest}s/ha</strong>.</p>
+          <p><strong>3. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender na janela ideal paga <strong>+22% por saca</strong>.</p>
+          <p><strong>4. Tempo Fora do Jogo & Save:</strong> O tempo dos serviços e dos meses continua contando quando você sai ou minimiza o app, com auto-save e backup <strong>.json</strong> em <strong>💾 App</strong>.</p>
         `;
       } else if (type === 'shop') {
         if (tabParam) activeShopTab = tabParam;
@@ -3812,7 +3879,7 @@
               <thead>
                 <tr>
                   <th>Cultura</th>
-                  <th>Época Plantio</th>
+                  <th>Ciclo / Plantio</th>
                   <th>Melhor Venda</th>
                   <th>Preço (${mObj.short})</th>
                   <th>Bruto/ha</th>
@@ -3828,7 +3895,7 @@
                   return `
                     <tr>
                       <td><strong>${c.name}</strong><br/><small>Plantio ${formatBRL(c.plantCostHa)}/ha</small></td>
-                      <td><strong>${c.plantWindowLabel}</strong><br/><small>${yMult > 1 ? '+18% safra' : (yMult < 1 ? '-22% fora' : 'regular')}</small></td>
+                      <td><strong>${c.monthsToGrow}m · ${c.plantWindowLabel}</strong><br/><small>${yMult > 1 ? '+18% safra' : (yMult < 1 ? '-22% fora' : 'regular')}</small></td>
                       <td><strong>${c.bestSellLabel}</strong></td>
                       <td class="${cls}">${formatBRL(effPrice)}</td>
                       <td><strong>${formatBRL(grossHa)}</strong></td>
@@ -3838,7 +3905,7 @@
               </tbody>
             </table>
           </div>
-          <p class="confirm-sub">Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> · Cuidar custa <strong>${formatBRL(getCareCostHa())}/ha</strong> · Colher custa <strong>${formatBRL(getHarvestCostHa())}/ha</strong>.</p>
+          <p class="confirm-sub">1 mês = 2h · Arar ${formatBRL(getPlowCostHa())}/ha · Cuidar ${formatBRL(getCareCostHa())}/ha · Colher ${formatBRL(getHarvestCostHa())}/ha.</p>
         `;
       } else if (type === 'livestock') {
         title.textContent = '🐄 Pecuária, Galinheiro & Chiqueiro';
@@ -3989,6 +4056,8 @@
           ? new Date(state.lastSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
           : 'Automático ativo';
 
+        const nextMonthInSec = Math.max(1, MONTH_SECONDS - (Number(state.monthProgressSeconds) || 0));
+
         const activeHtml = state.activeContract ? `
           <div class="machine-card" style="border-color:#0284c7;background:#f0f9ff;">
             <div class="machine-info">
@@ -4016,7 +4085,7 @@
                 </div>
               `;
             }).join('')
-          : `<p class="confirm-sub">Nenhum trabalho temporizado rodando no momento.</p>`;
+          : `<p class="confirm-sub">Nenhum trabalho temporizado rodando no momento. Próximo mês em <strong>${formatDurationSec(nextMonthInSec)}</strong>.</p>`;
 
         body.innerHTML = `
           <div class="machine-card" style="border-color:#2b4f18;background:#f2faed;">
@@ -4033,7 +4102,7 @@
           </div>
 
           <h4 style="margin:10px 0 6px;">Progresso & Backup em Arquivo</h4>
-          <p class="confirm-sub">Auto-save ativo (último registro: <strong>${lastSavedLabel}</strong>). Exporte o arquivo <strong>.json</strong> para guardar seu progresso fora do navegador.</p>
+          <p class="confirm-sub">Auto-save ativo (último registro: <strong>${lastSavedLabel}</strong>). 1 mês = 2h (próximo mês em <strong>${formatDurationSec(nextMonthInSec)}</strong>).</p>
           <div class="field-row">
             <button class="action-btn" onclick="saveGame()">Salvar Agora</button>
             <button class="action-btn gold" onclick="exportSaveFile()">⬇️ Exportar Save (.json)</button>
@@ -4095,7 +4164,7 @@
         <div class="summary-box"><span>Sobra Líquida</span><strong class="${afterLoanProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(afterLoanProfit)}</strong></div>
       `;
 
-      verdict.textContent = `${crop.name} (${mObj.short}): ${econ.sacks.toFixed(1)} sc · Preço atual ${formatBRL(econ.sellPrice)}/sc (melhor venda: ${crop.bestSellLabel}) · Receita bruta ${formatBRL(econ.grossRevenue)} · Frete ${formatBRL(econ.transportCost)}.`;
+      verdict.textContent = `${crop.name} (${crop.monthsToGrow}m · ${mObj.short}): ${econ.sacks.toFixed(1)} sc · Preço atual ${formatBRL(econ.sellPrice)}/sc (melhor venda: ${crop.bestSellLabel}) · Receita bruta ${formatBRL(econ.grossRevenue)} · Frete ${formatBRL(econ.transportCost)}.`;
     }
 
     function changeTransportMode(newMode) {
@@ -4505,7 +4574,7 @@
         for (let lx = 0; lx < SUB_SIZE; lx++) {
           const tx = ha.hc * SUB_SIZE + lx;
           const ty = ha.hr * SUB_SIZE + ly;
-          state.tiles[ty * TOTAL_TILE_COLS + tx] = { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
+          state.tiles[ty * TOTAL_TILE_COLS + tx] = { state: 'raw', cropId: null, ripe: false, cared: false, growthMonths: 0, lastCropId: null, monocultureCount: 0, plantedMonth: null };
         }
       }
       updateHUD();
@@ -4849,12 +4918,10 @@
     let autoSaveTickCounter = 0;
     setInterval(() => {
       tickBackgroundWork(1);
-      if ((state.activeTasks || []).length > 0) {
-        autoSaveTickCounter++;
-        if (autoSaveTickCounter >= 5) {
-          autoSaveTickCounter = 0;
-          autoSaveGame();
-        }
+      autoSaveTickCounter++;
+      if (autoSaveTickCounter >= 5) {
+        autoSaveTickCounter = 0;
+        autoSaveGame();
       }
     }, 1000);
 
