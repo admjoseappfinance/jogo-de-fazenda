@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#5b381a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fazenda Pixel" />
   <title>Fazenda Pixel - Safra Real (RS)</title>
   <style>
     :root {
@@ -750,8 +755,8 @@
         <div class="mini-hud-chip" onclick="playSfx('click'); openModal('prices')">
           📊 Tabela
         </div>
-        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('save')">
-          💾
+        <div class="mini-hud-chip" onclick="playSfx('click'); openModal('save')" title="Salvar, Backup e Instalar App">
+          💾 App
         </div>
       </div>
     </header>
@@ -855,9 +860,116 @@
     </div>
   </div>
 
+  <input type="file" id="importSaveInput" accept=".json,application/json" style="display:none;" onchange="handleImportSaveFile(event)" />
   <div class="toast" id="toast"></div>
 
   <script>
+    /* =========================================================================
+       PWA / APP INSTALÁVEL (ÍCONE + MANIFEST + SERVICE WORKER + PROMPT)
+       ========================================================================= */
+    const SAVE_STORAGE_KEY = 'fazendaPixelSafraReal_RS_v5';
+    let deferredInstallPrompt = null;
+    let isAppInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    function setupInstallablePWA() {
+      const appIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="108" fill="#69a73b"/>
+        <rect x="24" y="24" width="464" height="464" rx="90" fill="none" stroke="#3a210c" stroke-width="20"/>
+        <path d="M128 240 L256 130 L384 240 L384 390 L128 390 Z" fill="#c9412e" stroke="#4a110a" stroke-width="16" stroke-linejoin="round"/>
+        <path d="M106 248 L256 116 L406 248" fill="none" stroke="#5b381a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="206" y="275" width="100" height="115" rx="8" fill="#fff8e7" stroke="#4a110a" stroke-width="12"/>
+        <path d="M214 283 L298 382 M298 283 L214 382" stroke="#8f4722" stroke-width="10"/>
+        <circle cx="256" cy="205" r="26" fill="#f2b729" stroke="#5e3500" stroke-width="10"/>
+      </svg>`;
+      const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(appIconSvg);
+
+      const appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      appleIcon.href = iconUrl;
+      document.head.appendChild(appleIcon);
+
+      const manifestObj = {
+        name: 'Fazenda Pixel - Safra Real',
+        short_name: 'Fazenda Pixel',
+        description: 'Simulador agrícola com economia real do RS, sazonalidade e pecuária.',
+        start_url: location.href,
+        scope: './',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#69a73b',
+        theme_color: '#5b381a',
+        icons: [
+          { src: iconUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: iconUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = URL.createObjectURL(manifestBlob);
+      document.head.appendChild(manifestLink);
+
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        const swCode = `
+          const CACHE_NAME = 'fazenda-pixel-rs-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+            e.waitUntil(
+              caches.open(CACHE_NAME).then((cache) => cache.addAll([self.location.href]).catch(() => {}))
+            );
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(self.clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET') return;
+            e.respondWith(
+              fetch(e.request)
+                .then((res) => {
+                  const copy = res.clone();
+                  caches.open(CACHE_NAME).then((c) => c.put(e.request, copy)).catch(() => {});
+                  return res;
+                })
+                .catch(() => caches.match(e.request))
+            );
+          });
+        `;
+        try {
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+        } catch (_) {}
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      isAppInstalled = true;
+      deferredInstallPrompt = null;
+      showToast('📲 App Fazenda Pixel instalado!');
+    });
+
+    async function promptInstallApp() {
+      if (deferredInstallPrompt) {
+        playSfx('click');
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          deferredInstallPrompt = null;
+          showToast('📲 Instalando aplicativo na tela inicial...');
+        }
+        return;
+      }
+      playSfx('click');
+      showToast('Use o menu do navegador (⋮ ou Compartilhar) → "Instalar app / Adicionar à tela inicial"');
+    }
+
+    setupInstallablePWA();
+
     /* =========================================================================
        SISTEMA DE SONS PROCEDURAIS (WEB AUDIO API)
        ========================================================================= */
@@ -1020,6 +1132,7 @@
       if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
         prepareAreaActionConfirmation();
       }
+      autoSaveGame();
       showToast(`📅 Mês alterado para ${mObj.name} (${mObj.season})`);
     }
 
@@ -1764,6 +1877,7 @@
         state.contractsCompleted = (state.contractsCompleted || 0) + 1;
         updateHUD();
         renderWorld();
+        autoSaveGame();
         playSfx('coin');
         showToast(`✅ Contrato concluído (100%)! Recebeu ${formatBRL(payout)} de ${c.neighbor}.`);
       }
@@ -1817,6 +1931,7 @@
       return {
         money: INITIAL_CASH,
         calendarMonth: 10,
+        lastSavedAt: null,
         transportMode: 'camionete',
         ownedMachines: [],
         leasedMachines: [],
@@ -1839,7 +1954,49 @@
       };
     }
 
-    let state = createInitialState();
+    function normalizeLoadedState(parsed) {
+      const fresh = createInitialState();
+      const merged = Object.assign({}, fresh, parsed);
+      merged.silo = Object.assign({}, fresh.silo, parsed?.silo || {});
+      if (!Array.isArray(merged.activeTasks)) merged.activeTasks = [];
+      if (!Array.isArray(merged.cattle)) merged.cattle = [];
+      if (!Array.isArray(merged.loans)) merged.loans = [];
+      if (!Array.isArray(merged.ownedMachines)) merged.ownedMachines = [];
+      if (!Array.isArray(merged.leasedMachines)) merged.leasedMachines = [];
+      if (!merged.calendarMonth) merged.calendarMonth = 10;
+      if (typeof merged.woolKg !== 'number') merged.woolKg = 0;
+      if (typeof merged.eggsDozens !== 'number') merged.eggsDozens = 0;
+      if (Array.isArray(merged.hectares)) {
+        merged.hectares.forEach(h => {
+          if (!h.facilityType && h.isPasture) h.facilityType = 'pasture';
+        });
+      } else {
+        merged.hectares = fresh.hectares;
+      }
+      if (!Array.isArray(merged.tiles) || merged.tiles.length !== fresh.tiles.length) {
+        merged.tiles = fresh.tiles;
+      }
+      return merged;
+    }
+
+    function autoSaveGame() {
+      try {
+        state.lastSavedAt = Date.now();
+        localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(state));
+      } catch (_) {}
+    }
+
+    function loadInitialOrSavedState() {
+      try {
+        const raw = localStorage.getItem(SAVE_STORAGE_KEY);
+        if (raw) {
+          return normalizeLoadedState(JSON.parse(raw));
+        }
+      } catch (_) {}
+      return createInitialState();
+    }
+
+    let state = loadInitialOrSavedState();
     let currentTool = 'plow';
     let selectedCropId = 'soja';
     let selectedTileKeys = new Set();
@@ -2529,6 +2686,7 @@
         clearSelection();
         updateHUD();
         renderWorld();
+        autoSaveGame();
         playSfx('coin');
         showToast(`Comprou Hectare (${ha.hc + 1},${ha.hr + 1})!`);
         return;
@@ -2577,6 +2735,7 @@
       clearSelection();
       updateHUD();
       renderWorld();
+      autoSaveGame();
       showToast(`⏳ ${labelMap[act.type] || 'Serviço'} iniciado (${formatDurationSec(durationSec)})`);
     }
 
@@ -2712,6 +2871,7 @@
       }
 
       evaluateActiveContractProgress();
+      autoSaveGame();
     }
 
     function tickBackgroundWork(elapsedSec = 1) {
@@ -2797,6 +2957,7 @@
       clearSelection();
       updateHUD();
       renderWorld();
+      autoSaveGame();
       showToast(`⏳ Colheita iniciada (${formatDurationSec(durationSec)} · custo ${formatBRL(costInt)})`);
     }
 
@@ -3443,8 +3604,8 @@
         body.innerHTML = `
           <p><strong>1. Terra & Caixa (RS):</strong> Hectares custam entre <strong>R$ 68 mil e R$ 118 mil</strong> (padrão RS) e o caixa inicial é <strong>${formatBRL(INITIAL_CASH)}</strong>. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
           <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender no mês/janela ideal da cultura paga <strong>+22% por saca</strong>. Use o botão <strong>📅</strong> no topo para testar épocas.</p>
-          <p><strong>3. Sem Pasto Inicial:</strong> Você começa apenas com o hectare principal de lavoura e pode converter áreas em <strong>Pasto</strong>, <strong>Galinheiro</strong> ou <strong>Chiqueiro</strong>.</p>
-          <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾</strong> para reforçar o caixa.</p>
+          <p><strong>3. Save Automático & App Instalável:</strong> Seu progresso salva sozinho a cada ação e pode ser exportado em arquivo <strong>.json</strong> ou instalado na tela inicial do celular pelo menu <strong>💾 App</strong>.</p>
+          <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾 App</strong> para reforçar o caixa.</p>
         `;
       } else if (type === 'shop') {
         if (tabParam) activeShopTab = tabParam;
@@ -3806,10 +3967,14 @@
           }
         `;
       } else if (type === 'save') {
-        title.textContent = '💾 Contratos Vizinhos & Save';
+        title.textContent = '💾 Save, Backup & Instalar App';
         if (!Array.isArray(state.availableContracts) || state.availableContracts.length === 0) {
           state.availableContracts = generateAvailableContracts(state.hectares, state.contractsCompleted || 0);
         }
+
+        const lastSavedLabel = state.lastSavedAt
+          ? new Date(state.lastSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          : 'Automático ativo';
 
         const activeHtml = state.activeContract ? `
           <div class="machine-card" style="border-color:#0284c7;background:#f0f9ff;">
@@ -3841,7 +4006,35 @@
           : `<p class="confirm-sub">Nenhum trabalho temporizado rodando no momento.</p>`;
 
         body.innerHTML = `
-          <h4 style="margin:4px 0 6px;">Serviços em Andamento</h4>
+          <div class="machine-card" style="border-color:#2b4f18;background:#f2faed;">
+            <div class="machine-info">
+              <strong>📲 Aplicativo Instalável (PWA Offline)</strong>
+              <small>${isAppInstalled
+                ? 'Aplicativo já está rodando instalado no aparelho!'
+                : 'Instale na tela inicial do celular para abrir em tela cheia e jogar offline.'}</small>
+            </div>
+            ${isAppInstalled
+              ? `<button class="action-btn secondary" disabled>Instalado</button>`
+              : `<button class="action-btn" onclick="promptInstallApp()">📲 Instalar App</button>`
+            }
+          </div>
+
+          <h4 style="margin:10px 0 6px;">Progresso & Backup em Arquivo</h4>
+          <p class="confirm-sub">Auto-save ativo (último registro: <strong>${lastSavedLabel}</strong>). Exporte o arquivo <strong>.json</strong> para guardar seu progresso fora do navegador.</p>
+          <div class="field-row">
+            <button class="action-btn" onclick="saveGame()">Salvar Agora</button>
+            <button class="action-btn gold" onclick="exportSaveFile()">⬇️ Exportar Save (.json)</button>
+            <button class="action-btn secondary" onclick="triggerImportSaveFile()">⬆️ Importar Save</button>
+            <button class="action-btn danger" onclick="resetGame()">Novo Jogo</button>
+          </div>
+
+          <h4 style="margin:10px 0 6px;">Oficina Mecânica</h4>
+          <p class="confirm-sub">Desgaste atual das máquinas: <strong>${state.machineWear || 0}%</strong>.</p>
+          <div class="field-row">
+            <button class="action-btn gold" onclick="repairMachinery()">Revisar Oficina (${formatBRL(Math.max(1200, (state.machineWear || 0) * 140))})</button>
+          </div>
+
+          <h4 style="margin:10px 0 6px;">Serviços em Andamento</h4>
           ${runningTasksHtml}
 
           <h4 style="margin:10px 0 6px;">Contratos em Terrenos Vizinhos</h4>
@@ -3862,15 +4055,6 @@
               </div>
             `;
           }).join('')}
-
-          <h4 style="margin:12px 0 6px;">Oficina & Save do Jogo</h4>
-          <p class="confirm-sub">Desgaste atual das máquinas: <strong>${state.machineWear || 0}%</strong>.</p>
-          <div class="field-row">
-            <button class="action-btn gold" onclick="repairMachinery()">Revisar Oficina (${formatBRL(Math.max(1200, (state.machineWear || 0) * 140))})</button>
-            <button class="action-btn" onclick="saveGame()">Salvar</button>
-            <button class="action-btn gold" onclick="loadGame()">Carregar</button>
-            <button class="action-btn danger" onclick="resetGame()">Novo Jogo</button>
-          </div>
         `;
       }
 
@@ -3905,6 +4089,7 @@
       if (TRANSPORT_MODES[newMode]) {
         playSfx('click');
         state.transportMode = newMode;
+        autoSaveGame();
         showToast(`Transporte alterado para ${TRANSPORT_MODES[newMode].name}`);
         if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
           prepareAreaActionConfirmation();
@@ -3926,6 +4111,7 @@
       state.ownedMachines.push(itemId);
       updateHUD();
       setTool(currentTool);
+      autoSaveGame();
       playSfx('coin');
       showToast(`Comprou ${item.name}! Custos reduzidos.`);
       closeModal();
@@ -3950,6 +4136,7 @@
       });
       updateHUD();
       setTool(currentTool);
+      autoSaveGame();
       playSfx('coin');
       showToast(`Alugou ${item.name} por 2 colheitas!`);
       closeModal();
@@ -3977,6 +4164,7 @@
       state.machineWear = Math.min(100, Math.max(state.machineWear || 0, lot.initialWear));
       updateHUD();
       setTool(currentTool);
+      autoSaveGame();
       playSfx('coin');
       showToast(`Arrematou ${baseItem.name} por ${formatBRL(usedPrice)}!`);
       closeModal();
@@ -4022,6 +4210,7 @@
       }
       setTool(srv.task);
       focusContractField();
+      autoSaveGame();
       showToast(`Contrato aceito! Vá ao talhão (${srv.hc + 1},${srv.hr + 1}) e faça o serviço.`);
     }
 
@@ -4032,6 +4221,7 @@
       state.activeContract = null;
       state.availableContracts = generateAvailableContracts(state.hectares, state.contractsCompleted || 0);
       renderWorld();
+      autoSaveGame();
       showToast('Contrato cancelado.');
       openModal('save');
     }
@@ -4094,6 +4284,7 @@
       });
 
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Empréstimo aceito: ${calc.inst}x de ${formatBRL(calc.installmentAmount)} após colher.`);
       closeModal();
@@ -4117,6 +4308,7 @@
         state.loans.splice(idx, 1);
       }
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Pagou parcela de ${formatBRL(pay)}!`);
       closeModal();
@@ -4161,6 +4353,7 @@
       state.silo[cropId] = Math.max(0, +(state.silo[cropId] - qty).toFixed(2));
       state.money += net;
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Vendeu ${qty} sc (${formatBRL(unitPrice)}/sc) · Líquido: ${formatBRL(net)}`);
       closeModal();
@@ -4168,37 +4361,71 @@
     }
 
     function saveGame() {
-      localStorage.setItem('fazendaPixelSafraReal_RS_v5', JSON.stringify(state));
+      autoSaveGame();
       playSfx('done');
-      showToast('Jogo salvo!');
+      showToast('Progresso salvo no aparelho!');
+      if (document.getElementById('modalBackdrop').classList.contains('open')) {
+        openModal('save');
+      }
     }
 
-    function loadGame() {
-      const raw = localStorage.getItem('fazendaPixelSafraReal_RS_v5');
-      if (!raw) {
-        playSfx('error');
-        showToast('Nenhum save encontrado!');
-        return;
-      }
-      state = JSON.parse(raw);
-      if (!Array.isArray(state.activeTasks)) state.activeTasks = [];
-      if (!state.calendarMonth) state.calendarMonth = 10;
-      if (typeof state.woolKg !== 'number') state.woolKg = 0;
-      if (typeof state.eggsDozens !== 'number') state.eggsDozens = 0;
-      state.hectares.forEach(h => {
-        if (!h.facilityType && h.isPasture) h.facilityType = 'pasture';
-      });
-      clearSelection();
-      updateHUD();
-      setTool(currentTool);
-      renderWorld();
+    function exportSaveFile() {
+      autoSaveGame();
+      const payload = JSON.stringify(state, null, 2);
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `fazenda-pixel-save-${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       playSfx('done');
-      showToast('Save carregado!');
+      showToast('⬇️ Backup .json exportado!');
+    }
+
+    function triggerImportSaveFile() {
+      playSfx('click');
+      const input = document.getElementById('importSaveInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleImportSaveFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || '{}'));
+          if (!parsed || typeof parsed.money !== 'number' || !Array.isArray(parsed.hectares)) {
+            throw new Error('Formato inválido');
+          }
+          state = normalizeLoadedState(parsed);
+          autoSaveGame();
+          clearSelection();
+          updateHUD();
+          setTool(currentTool);
+          renderWorld();
+          closeModal();
+          playSfx('done');
+          showToast('✅ Backup importado com sucesso!');
+        } catch (_) {
+          playSfx('error');
+          showToast('Arquivo de save inválido.');
+        }
+      };
+      reader.readAsText(file);
     }
 
     function resetGame() {
-      localStorage.removeItem('fazendaPixelSafraReal_RS_v5');
+      localStorage.removeItem(SAVE_STORAGE_KEY);
       state = createInitialState();
+      autoSaveGame();
       clearSelection();
       updateHUD();
       setTool('plow');
@@ -4269,6 +4496,7 @@
       }
       updateHUD();
       renderWorld();
+      autoSaveGame();
       playSfx('done');
       showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) transformado em ${nameMap[facilityType]}!`);
       openModal('livestock');
@@ -4319,6 +4547,7 @@
 
       playSfx('click');
       renderWorld();
+      autoSaveGame();
       showToast(`Hectare (${ha.hc + 1},${ha.hr + 1}) voltou para lavoura.`);
       openModal('livestock');
     }
@@ -4340,6 +4569,7 @@
 
       playSfx('done');
       renderWorld();
+      autoSaveGame();
       showToast(`Pastos juntados (${pA.areaHa + pB.areaHa} ha)!`);
       openModal('livestock');
     }
@@ -4358,6 +4588,7 @@
 
       playSfx('click');
       renderWorld();
+      autoSaveGame();
       showToast('Pastos separados novamente!');
       openModal('livestock');
     }
@@ -4372,6 +4603,7 @@
       });
       playSfx('animal');
       renderWorld();
+      autoSaveGame();
       showToast(`Rebanho movido para o pasto selecionado (${dest.areaHa} ha)!`);
       openModal('livestock');
     }
@@ -4400,6 +4632,7 @@
       const kgAdded = Math.round(qty * SILAGE_KG_PER_CORN_SACK);
       state.silageKg = (state.silageKg || 0) + kgAdded;
       updateHUD();
+      autoSaveGame();
       playSfx('done');
       showToast(`Produziu ${kgAdded} kg de silagem com ${qty.toFixed(1)} sc de milho!`);
       openModal('livestock');
@@ -4488,6 +4721,7 @@
 
       updateHUD();
       renderWorld();
+      autoSaveGame();
       playSfx('animal');
       showToast(`Comprou ${spec.name}!`);
       openModal('livestock');
@@ -4506,6 +4740,7 @@
       state.money += net;
       updateHUD();
       renderWorld();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Vendeu (${mode === 'butcher' ? 'Açougue' : 'Vivo Criação'}) por ${formatBRL(net)} líquido!`);
       openModal('livestock');
@@ -4523,6 +4758,7 @@
       state.milkLiters = 0;
       state.money += net;
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Vendeu ${liters.toFixed(0)} L de leite por ${formatBRL(net)} líquido!`);
       openModal('livestock');
@@ -4539,6 +4775,7 @@
       state.woolKg = 0;
       state.money += net;
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Vendeu ${kg.toFixed(2)} kg de lã por ${formatBRL(net)}!`);
       openModal('livestock');
@@ -4555,6 +4792,7 @@
       state.eggsDozens = 0;
       state.money += net;
       updateHUD();
+      autoSaveGame();
       playSfx('coin');
       showToast(`Vendeu ${dz.toFixed(1)} dúzias de ovos por ${formatBRL(net)}!`);
       openModal('livestock');
@@ -4576,6 +4814,7 @@
       state.money -= cost;
       state.machineWear = 0;
       updateHUD();
+      autoSaveGame();
       playSfx('done');
       showToast(`Oficina concluída (${formatBRL(cost)})! Eficiência 100%.`);
       closeModal();
@@ -4591,10 +4830,24 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
 
+    let autoSaveTickCounter = 0;
     setInterval(() => {
       tickBackgroundWork(1);
+      if ((state.activeTasks || []).length > 0) {
+        autoSaveTickCounter++;
+        if (autoSaveTickCounter >= 5) {
+          autoSaveTickCounter = 0;
+          autoSaveGame();
+        }
+      }
     }, 1000);
 
+    window.addEventListener('beforeunload', autoSaveGame);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        autoSaveGame();
+      }
+    });
     window.addEventListener('resize', resizeCanvas);
 
     renderCropSelector();
