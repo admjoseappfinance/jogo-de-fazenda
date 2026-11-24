@@ -709,7 +709,7 @@
             <div class="stat-pill-icon coin">$</div>
             <div class="stat-pill-texts">
               <span class="stat-pill-label">CAIXA</span>
-              <span class="stat-pill-val" id="hudMoney">R$ 45.000</span>
+              <span class="stat-pill-val" id="hudMoney">R$ 135.000</span>
             </div>
           </div>
 
@@ -723,6 +723,9 @@
         </div>
 
         <div class="top-controls-right">
+          <button class="cream-btn" id="btnSeasonStep" onclick="stepCalendarMonth()" title="Trocar mês de safra/venda (manual)">
+            📅 <span id="hudSeasonLabel">Out · Safra</span>
+          </button>
           <button class="cream-btn" id="btnSoundToggle" onclick="toggleSound()" title="Ligar ou desligar sons do jogo">
             🔊 Som: ON
           </button>
@@ -836,7 +839,7 @@
       </div>
 
       <div class="hint-bar" id="hintBar">
-        Arar: R$ 180/ha · 6 min/ha
+        Arar: R$ 260/ha · 6 min/ha
       </div>
     </footer>
   </div>
@@ -973,11 +976,11 @@
       }
     }
 
-    const INITIAL_CASH = 45000;
+    const INITIAL_CASH = 135000;
 
-    const BASE_PLOW_HA = 180;
-    const BASE_CARE_HA = 270;
-    const BASE_HARVEST_HA = 230;
+    const BASE_PLOW_HA = 260;
+    const BASE_CARE_HA = 380;
+    const BASE_HARVEST_HA = 340;
 
     const WORK_SECONDS_PER_HA = {
       plow: 6 * 60,
@@ -985,6 +988,40 @@
       care: 10 * 60,
       harvest: 8 * 60
     };
+
+    const MONTHS = [
+      { idx: 1, short: 'Jan', name: 'Janeiro', season: 'Verão' },
+      { idx: 2, short: 'Fev', name: 'Fevereiro', season: 'Verão' },
+      { idx: 3, short: 'Mar', name: 'Março', season: 'Outono' },
+      { idx: 4, short: 'Abr', name: 'Abril', season: 'Outono' },
+      { idx: 5, short: 'Mai', name: 'Maio', season: 'Outono' },
+      { idx: 6, short: 'Jun', name: 'Junho', season: 'Inverno' },
+      { idx: 7, short: 'Jul', name: 'Julho', season: 'Inverno' },
+      { idx: 8, short: 'Ago', name: 'Agosto', season: 'Inverno' },
+      { idx: 9, short: 'Set', name: 'Setembro', season: 'Primavera' },
+      { idx: 10, short: 'Out', name: 'Outubro', season: 'Primavera' },
+      { idx: 11, short: 'Nov', name: 'Novembro', season: 'Primavera' },
+      { idx: 12, short: 'Dez', name: 'Dezembro', season: 'Verão' }
+    ];
+
+    function getCurrentMonthObj() {
+      const m = Number(state?.calendarMonth || 10);
+      return MONTHS.find(x => x.idx === m) || MONTHS[9];
+    }
+
+    function stepCalendarMonth() {
+      const cur = Number(state.calendarMonth || 10);
+      const next = (cur % 12) + 1;
+      state.calendarMonth = next;
+      const mObj = getCurrentMonthObj();
+      playSfx('click');
+      updateHUD();
+      setTool(currentTool);
+      if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
+        prepareAreaActionConfirmation();
+      }
+      showToast(`📅 Mês alterado para ${mObj.name} (${mObj.season})`);
+    }
 
     function computeTaskDurationSeconds(taskType, areaHa) {
       return getWorkDurationSeconds(taskType, areaHa);
@@ -1012,9 +1049,9 @@
         id: 'trator_aracao',
         name: 'Trator de Preparo (130 cv)',
         category: 'trator',
-        price: 26000,
-        rentPerHarvest: 2200,
-        desc: 'Reduz o custo de Arar em 50% (de R$ 180 para R$ 90/ha).',
+        price: 38000,
+        rentPerHarvest: 3200,
+        desc: 'Reduz o custo de Arar em 50% (de R$ 260 para R$ 130/ha).',
         discountKey: 'plow',
         discountFactor: 0.50
       },
@@ -1022,8 +1059,8 @@
         id: 'ensiladeira_forragem',
         name: 'Ensiladeira / Picadora de Milho',
         category: 'maquinario',
-        price: 8500,
-        rentPerHarvest: 950,
+        price: 12500,
+        rentPerHarvest: 1400,
         desc: 'Transforma sacas de Milho em Silagem (1 sc milho = 180 kg silagem).',
         discountKey: 'silage'
       },
@@ -1031,9 +1068,9 @@
         id: 'pulverizador_cuidado',
         name: 'Pulverizador Autopropelido',
         category: 'maquinario',
-        price: 29500,
-        rentPerHarvest: 2600,
-        desc: 'Reduz o custo de Cuidar em 50% (de R$ 270 para R$ 135/ha).',
+        price: 44000,
+        rentPerHarvest: 3800,
+        desc: 'Reduz o custo de Cuidar em 50% (de R$ 380 para R$ 190/ha).',
         discountKey: 'care',
         discountFactor: 0.50
       },
@@ -1041,9 +1078,9 @@
         id: 'colheitadeira_graos',
         name: 'Colheitadeira de Grãos',
         category: 'colheitadeira',
-        price: 42000,
-        rentPerHarvest: 3600,
-        desc: 'Reduz o custo de Colher em 55% (de R$ 230 para R$ 104/ha).',
+        price: 62000,
+        rentPerHarvest: 5400,
+        desc: 'Reduz o custo de Colher em 55% (de R$ 340 para R$ 153/ha).',
         discountKey: 'harvest',
         discountFactor: 0.45
       },
@@ -1051,8 +1088,8 @@
         id: 'caminhao_proprio',
         name: 'Caminhão Graneleiro Próprio',
         category: 'caminhao',
-        price: 34000,
-        rentPerHarvest: 2900,
+        price: 49000,
+        rentPerHarvest: 4200,
         desc: 'Frete de grãos cai para R$ 2,50/saca sem limite de sacas.',
         discountKey: 'freight',
         ownFreightPerSack: 2.5
@@ -1061,8 +1098,8 @@
         id: 'caminhao_boiadeiro',
         name: 'Caminhão Boiadeiro',
         category: 'caminhao',
-        price: 22000,
-        rentPerHarvest: 1900,
+        price: 32000,
+        rentPerHarvest: 2800,
         desc: 'Reduz frete na venda de animais.',
         discountKey: 'cattle_freight'
       },
@@ -1070,8 +1107,8 @@
         id: 'caminhao_leite',
         name: 'Caminhão Tanque Isotérmico',
         category: 'caminhao',
-        price: 19500,
-        rentPerHarvest: 1700,
+        price: 28000,
+        rentPerHarvest: 2400,
         desc: 'Frete do leite cai de R$ 0,30/L para R$ 0,08/L.',
         discountKey: 'milk_freight'
       },
@@ -1079,8 +1116,8 @@
         id: 'enfardadeira_feno',
         name: 'Segadora & Enfardadeira',
         category: 'maquinario',
-        price: 11000,
-        rentPerHarvest: 1150,
+        price: 16500,
+        rentPerHarvest: 1650,
         desc: 'Melhora eficiência operacional na colheita.',
         discountKey: 'bale'
       },
@@ -1088,8 +1125,8 @@
         id: 'calcaria_adubo',
         name: 'Distribuidor de Calcário & Adubo',
         category: 'maquinario',
-        price: 9800,
-        rentPerHarvest: 1050,
+        price: 14500,
+        rentPerHarvest: 1500,
         desc: 'Aumenta o rendimento das lavouras em +15% e reduz fadiga do solo.',
         discountKey: 'lime'
       }
@@ -1135,9 +1172,9 @@
       'Fazenda Três Irmãos'
     ];
 
-    const FENCE_COST_HA = 4800;
-    const COOP_COST_HA = 3600;
-    const STY_COST_HA = 4200;
+    const FENCE_COST_HA = 12500;
+    const COOP_COST_HA = 9500;
+    const STY_COST_HA = 11000;
     const UA_CAPACITY_PER_HA = 2.2;
     const SILAGE_KG_PER_CORN_SACK = 180;
     const SILAGE_PROCESS_COST_PER_SACK = 10;
@@ -1156,7 +1193,7 @@
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 0.65,
-        buyPrice: 2400,
+        buyPrice: 3600,
         startArrobas: 8.5,
         maxArrobas: 21.0,
         silageKgPerMonth: 180,
@@ -1164,8 +1201,8 @@
         woolKgMonth: 0,
         eggsDozensMonth: 0,
         minButcherArrobas: 15.0,
-        freightBase: 85,
-        freightOwn: 20
+        freightBase: 110,
+        freightOwn: 25
       },
       vaca: {
         id: 'vaca',
@@ -1175,7 +1212,7 @@
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 1.0,
-        buyPrice: 4400,
+        buyPrice: 6200,
         startArrobas: 14.0,
         maxArrobas: 18.0,
         silageKgPerMonth: 220,
@@ -1183,8 +1220,8 @@
         woolKgMonth: 0,
         eggsDozensMonth: 0,
         minButcherArrobas: 14.0,
-        freightBase: 85,
-        freightOwn: 20
+        freightBase: 110,
+        freightOwn: 25
       },
       ovelha: {
         id: 'ovelha',
@@ -1194,7 +1231,7 @@
         requiresGrain: false,
         grainSacksMonth: 0,
         uaWeight: 0.18,
-        buyPrice: 650,
+        buyPrice: 950,
         startArrobas: 2.5,
         maxArrobas: 4.5,
         silageKgPerMonth: 35,
@@ -1202,8 +1239,8 @@
         woolKgMonth: 0.5,
         eggsDozensMonth: 0,
         minButcherArrobas: 3.0,
-        freightBase: 22,
-        freightOwn: 6
+        freightBase: 30,
+        freightOwn: 8
       },
       porco: {
         id: 'porco',
@@ -1213,7 +1250,7 @@
         requiresGrain: true,
         grainSacksMonth: 1.0,
         uaWeight: 0.25,
-        buyPrice: 820,
+        buyPrice: 1150,
         startArrobas: 3.2,
         maxArrobas: 7.5,
         silageKgPerMonth: 0,
@@ -1221,8 +1258,8 @@
         woolKgMonth: 0,
         eggsDozensMonth: 0,
         minButcherArrobas: 5.0,
-        freightBase: 28,
-        freightOwn: 8
+        freightBase: 35,
+        freightOwn: 10
       },
       galinha: {
         id: 'galinha',
@@ -1232,7 +1269,7 @@
         requiresGrain: true,
         grainSacksMonth: 0.25,
         uaWeight: 0.05,
-        buyPrice: 70,
+        buyPrice: 95,
         startArrobas: 0.18,
         maxArrobas: 0.35,
         silageKgPerMonth: 0,
@@ -1240,7 +1277,7 @@
         woolKgMonth: 0,
         eggsDozensMonth: 2.5,
         minButcherArrobas: 0.20,
-        freightBase: 5,
+        freightBase: 6,
         freightOwn: 2
       }
     };
@@ -1356,6 +1393,9 @@
       }
     }
 
+    /* =========================================================================
+       SAZIONALIDADE (SAFRA/PRODUÇÃO E MELHOR MÊS/JANELA DE VENDA - RS)
+       ========================================================================= */
     const CROPS = {
       soja: {
         id: 'soja',
@@ -1363,10 +1403,14 @@
         color: '#67a832',
         ripeColor: '#e8c325',
         monthsToGrow: 4,
-        baseYieldPerHa: 48,
-        careBonusYieldPerHa: 7,
-        plantCostHa: 920,
-        pricePerSack: 128
+        baseYieldPerHa: 54,
+        careBonusYieldPerHa: 8,
+        plantCostHa: 1450,
+        pricePerSack: 132,
+        plantMonths: [10, 11, 12],
+        bestSellMonths: [6, 7, 8],
+        plantWindowLabel: 'Out–Dez',
+        bestSellLabel: 'Jun–Ago'
       },
       milho: {
         id: 'milho',
@@ -1374,10 +1418,14 @@
         color: '#e5b828',
         ripeColor: '#f59e16',
         monthsToGrow: 3,
-        baseYieldPerHa: 102,
-        careBonusYieldPerHa: 15,
-        plantCostHa: 840,
-        pricePerSack: 70
+        baseYieldPerHa: 112,
+        careBonusYieldPerHa: 16,
+        plantCostHa: 1320,
+        pricePerSack: 72,
+        plantMonths: [9, 10, 11],
+        bestSellMonths: [7, 8, 9],
+        plantWindowLabel: 'Set–Nov',
+        bestSellLabel: 'Jul–Set'
       },
       trigo: {
         id: 'trigo',
@@ -1385,10 +1433,14 @@
         color: '#d9a441',
         ripeColor: '#f0be35',
         monthsToGrow: 3,
-        baseYieldPerHa: 54,
-        careBonusYieldPerHa: 8,
-        plantCostHa: 640,
-        pricePerSack: 92
+        baseYieldPerHa: 58,
+        careBonusYieldPerHa: 9,
+        plantCostHa: 980,
+        pricePerSack: 94,
+        plantMonths: [5, 6, 7],
+        bestSellMonths: [2, 3, 4],
+        plantWindowLabel: 'Mai–Jul',
+        bestSellLabel: 'Fev–Abr'
       },
       canola: {
         id: 'canola',
@@ -1396,10 +1448,14 @@
         color: '#d9cf26',
         ripeColor: '#eb9d15',
         monthsToGrow: 4,
-        baseYieldPerHa: 35,
+        baseYieldPerHa: 38,
         careBonusYieldPerHa: 6,
-        plantCostHa: 580,
-        pricePerSack: 168
+        plantCostHa: 920,
+        pricePerSack: 175,
+        plantMonths: [5, 6],
+        bestSellMonths: [1, 2, 3],
+        plantWindowLabel: 'Mai–Jun',
+        bestSellLabel: 'Jan–Mar'
       },
       sorgo: {
         id: 'sorgo',
@@ -1407,10 +1463,14 @@
         color: '#c96f28',
         ripeColor: '#e08b22',
         monthsToGrow: 3,
-        baseYieldPerHa: 66,
-        careBonusYieldPerHa: 10,
-        plantCostHa: 600,
-        pricePerSack: 64
+        baseYieldPerHa: 72,
+        careBonusYieldPerHa: 11,
+        plantCostHa: 950,
+        pricePerSack: 66,
+        plantMonths: [11, 12, 1],
+        bestSellMonths: [8, 9, 10],
+        plantWindowLabel: 'Nov–Jan',
+        bestSellLabel: 'Ago–Out'
       },
       aveia: {
         id: 'aveia',
@@ -1418,14 +1478,40 @@
         color: '#b8c468',
         ripeColor: '#e5d46b',
         monthsToGrow: 3,
-        baseYieldPerHa: 52,
+        baseYieldPerHa: 56,
         careBonusYieldPerHa: 8,
-        plantCostHa: 540,
-        pricePerSack: 82
+        plantCostHa: 860,
+        pricePerSack: 84,
+        plantMonths: [4, 5, 6],
+        bestSellMonths: [1, 2, 12],
+        plantWindowLabel: 'Abr–Jun',
+        bestSellLabel: 'Dez–Fev'
       }
     };
 
     const CROP_LIST = Object.values(CROPS);
+
+    function getYieldSeasonMultiplier(crop, monthIdx = state?.calendarMonth || 10) {
+      if (!crop || !Array.isArray(crop.plantMonths)) return 1.0;
+      if (crop.plantMonths.includes(monthIdx)) return 1.18;
+      const prevM = ((monthIdx - 2 + 12) % 12) + 1;
+      const nextM = (monthIdx % 12) + 1;
+      if (crop.plantMonths.includes(prevM) || crop.plantMonths.includes(nextM)) return 1.0;
+      return 0.78;
+    }
+
+    function getSellSeasonMultiplier(crop, monthIdx = state?.calendarMonth || 10) {
+      if (!crop || !Array.isArray(crop.bestSellMonths)) return 1.0;
+      if (crop.bestSellMonths.includes(monthIdx)) return 1.22;
+      const prevM = ((monthIdx - 2 + 12) % 12) + 1;
+      const nextM = (monthIdx % 12) + 1;
+      if (crop.bestSellMonths.includes(prevM) || crop.bestSellMonths.includes(nextM)) return 1.02;
+      return 0.86;
+    }
+
+    function getEffectiveSellPricePerSack(crop, monthIdx = state?.calendarMonth || 10) {
+      return Math.round(crop.pricePerSack * getSellSeasonMultiplier(crop, monthIdx));
+    }
 
     const HA_COLS = 10;
     const HA_ROWS = 10;
@@ -1490,35 +1576,39 @@
     }
 
     function getFarmEquity() {
-      const landVal = state.hectares.filter(h => h.owned).reduce((s, h) => s + (h.price || 14000), 0);
+      const landVal = state.hectares.filter(h => h.owned).reduce((s, h) => s + (h.price || 85000), 0);
       const machVal = (state.ownedMachines || []).reduce((s, id) => {
         const it = SHOP_ITEMS.find(x => x.id === id);
         return s + (it ? Math.round(it.price * 0.65) : 0);
       }, 0);
-      const siloVal = CROP_LIST.reduce((s, c) => s + ((state.silo[c.id] || 0) * c.pricePerSack), 0);
+      const siloVal = CROP_LIST.reduce((s, c) => s + ((state.silo[c.id] || 0) * getEffectiveSellPricePerSack(c)), 0);
       return Math.round(landVal + machVal + siloVal);
     }
 
     function getMaxLoanLimit() {
       const equity = getFarmEquity();
-      return Math.max(12000, Math.min(85000, Math.round(equity * 0.50)));
+      return Math.max(25000, Math.min(180000, Math.round(equity * 0.45)));
     }
 
-    function getPlantAreaEconomics(crop, areaHa, withCare = false, modeId = state.transportMode) {
+    function getPlantAreaEconomics(crop, areaHa, withCare = false, modeId = state.transportMode, monthIdx = state?.calendarMonth || 10) {
       const plantCost = Math.round(areaHa * crop.plantCostHa);
       const plowCost = Math.round(areaHa * getPlowCostHa());
       const careCost = withCare ? Math.round(areaHa * getCareCostHa()) : 0;
       const harvestCost = Math.round(areaHa * getHarvestCostHa());
       const limeBonus = ownsItem('calcaria_adubo') ? 1.15 : 1.0;
-      const sacks = +(areaHa * (crop.baseYieldPerHa + (withCare ? crop.careBonusYieldPerHa : 0)) * limeBonus).toFixed(2);
+      const seasonYieldMult = getYieldSeasonMultiplier(crop, monthIdx);
+      const sacks = +(areaHa * (crop.baseYieldPerHa + (withCare ? crop.careBonusYieldPerHa : 0)) * limeBonus * seasonYieldMult).toFixed(2);
       const transportCost = Math.round(sacks * getTransportRatePerSack(modeId));
       const totalCycleCost = plantCost + plowCost + careCost + harvestCost + transportCost;
-      const grossRevenue = Math.round(sacks * crop.pricePerSack);
+      const sellPrice = getEffectiveSellPricePerSack(crop, monthIdx);
+      const grossRevenue = Math.round(sacks * sellPrice);
       const estimatedProfit = grossRevenue - totalCycleCost;
 
       return {
         plantCost,
         sacks,
+        seasonYieldMult,
+        sellPrice,
         transportCost,
         totalCycleCost,
         grossRevenue,
@@ -1558,19 +1648,19 @@
 
         if (task === 'plow') {
           title = `Arar Talhão (${ha.hc + 1},${ha.hr + 1})`;
-          reward = 950;
+          reward = 1400;
           desc = `${neighbor}: Prepare toda a terra (1 ha) do talhão (${ha.hc + 1},${ha.hr + 1}) usando Arar.`;
         } else if (task === 'plant') {
           title = `Semear ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
-          reward = Math.round(crop.plantCostHa + 850);
+          reward = Math.round(crop.plantCostHa + 1250);
           desc = `${neighbor}: Semeie ${crop.name} no talhão (${ha.hc + 1},${ha.hr + 1}). Reembolsa semente e paga o serviço.`;
         } else if (task === 'care') {
           title = `Pulverizar ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
-          reward = 1150;
+          reward = 1650;
           desc = `${neighbor}: Aplique defensivo/adubo com Cuidar no talhão (${ha.hc + 1},${ha.hr + 1}).`;
         } else {
           title = `Colher ${crop.name} (${ha.hc + 1},${ha.hr + 1})`;
-          reward = 1450;
+          reward = 2100;
           desc = `${neighbor}: Colha a lavoura pronta do talhão (${ha.hc + 1},${ha.hr + 1}) com Colher Tudo.`;
         }
 
@@ -1638,7 +1728,8 @@
             ripe: false,
             cared: false,
             lastCropId: null,
-            monocultureCount: 0
+            monocultureCount: 0,
+            plantedMonth: null
           };
         }
       }
@@ -1684,7 +1775,7 @@
         for (let hc = 0; hc < HA_COLS; hc++) {
           const idx = hr * HA_COLS + hc;
           const soilQuality = ((hc * 7 + hr * 13) % 5) / 4;
-          const price = Math.round(12500 + soilQuality * 9500);
+          const price = Math.round(68000 + soilQuality * 50000);
           const isMain = (hc === 4 && hr === 4);
           hectares.push({
             id: idx,
@@ -1714,17 +1805,18 @@
           const isPlanted = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6) && !(lx >= 3 && lx <= 6 && ly === 3);
           const isPlowed = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6);
           if (isPlanted) {
-            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, lastCropId: null, monocultureCount: 0 };
+            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, lastCropId: null, monocultureCount: 0, plantedMonth: 10 };
           }
           if (isPlowed) {
-            return { state: 'plowed', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0 };
+            return { state: 'plowed', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
           }
         }
-        return { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0 };
+        return { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
       });
 
       return {
         money: INITIAL_CASH,
+        calendarMonth: 10,
         transportMode: 'camionete',
         ownedMachines: [],
         leasedMachines: [],
@@ -2276,7 +2368,7 @@
 
       document.getElementById('confirmTitle').textContent = `Comprar Hectare (${ha.hc + 1}, ${ha.hr + 1})`;
       document.getElementById('confirmSummaryBoxes').innerHTML = `
-        <div class="summary-box"><span>Valor do Hectare</span><strong>${formatBRL(ha.price)}</strong></div>
+        <div class="summary-box"><span>Valor do Hectare (RS)</span><strong>${formatBRL(ha.price)}</strong></div>
         <div class="summary-box"><span>Caixa Após</span><strong class="${canBuy ? 'profit-pos' : 'profit-neg'}">${formatBRL(state.money - ha.price)}</strong></div>
       `;
       document.getElementById('confirmSubInfo').textContent = `1 hectare = 64 blocos (8x8). Caixa atual: ${formatBRL(state.money)}.`;
@@ -2291,6 +2383,7 @@
     function prepareAreaActionConfirmation() {
       const crop = CROPS[selectedCropId];
       const busyTiles = getBusyTileSet();
+      const mObj = getCurrentMonthObj();
 
       const coords = [];
       let blockedCount = 0;
@@ -2332,7 +2425,7 @@
         const contractCount = eligible.length - ownCount;
         const areaHa = eligible.length / TILES_PER_HA;
         durationSec = eligible.length > 0 ? computeTaskDurationSeconds('plant', areaHa) : 0;
-        const econ = getPlantAreaEconomics(crop, areaHa, false, state.transportMode);
+        const econ = getPlantAreaEconomics(crop, areaHa, false, state.transportMode, mObj.idx);
         actionCost = econ.plantCost;
 
         const busyNote = blockedCount > 0 ? ` · ⏳ ${blockedCount} bloco(s) em serviço` : '';
@@ -2351,12 +2444,15 @@
 
           const repeatCount = eligible.filter(([tx, ty]) => !isContractTile(tx, ty) && state.tiles[ty * TOTAL_TILE_COLS + tx].lastCropId === crop.id).length;
           const rotNote = repeatCount > 0 ? ` · ⚠️ ${repeatCount} bloco(s) repetindo ${crop.name}` : ' · ✅ Boa rotação';
+          const seasonTag = econ.seasonYieldMult > 1
+            ? ` · 🌱 Safra ideal (${crop.plantWindowLabel})`
+            : (econ.seasonYieldMult < 1 ? ` · ⚠️ Fora da época (${crop.plantWindowLabel})` : ` · 🌿 Janela regular (${crop.plantWindowLabel})`);
 
           boxesHtml = `
             <div class="summary-box"><span>Duração Estimada</span><strong>${formatDurationSec(durationSec)}</strong></div>
             <div class="summary-box"><span>Lucro Líquido Est.</span><strong class="${econ.estimatedProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(econ.estimatedProfit)}</strong></div>
           `;
-          subText = `Custo: ${formatBRL(econ.plantCost)} · Est. ${econ.sacks.toFixed(1)} sc${rotNote}${busyNote}.`;
+          subText = `Custo: ${formatBRL(econ.plantCost)} · Est. ${econ.sacks.toFixed(1)} sc · Venda ideal: ${crop.bestSellLabel}${seasonTag}${rotNote}${busyNote}.`;
         }
       } else if (currentTool === 'plow') {
         eligible = coords.filter(([tx, ty]) => {
@@ -2468,6 +2564,7 @@
         id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         type: act.type,
         cropId: act.cropId || null,
+        monthIdx: Number(state.calendarMonth || 10),
         tileKeys: freeCoords.map(([tx, ty]) => `${tx},${ty}`),
         totalSeconds: durationSec,
         remainingSeconds: durationSec,
@@ -2485,6 +2582,7 @@
 
     function finalizeCompletedTask(task) {
       const coords = (task.tileKeys || []).map(k => k.split(',').map(Number));
+      const taskMonth = Number(task.monthIdx || state.calendarMonth || 10);
 
       if (task.type === 'plow') {
         coords.forEach(([tx, ty]) => {
@@ -2509,6 +2607,7 @@
             const sameAsLast = tile.lastCropId === task.cropId;
             tile.monocultureCount = sameAsLast ? ((tile.monocultureCount || 0) + 1) : 0;
             tile.lastCropId = task.cropId;
+            tile.plantedMonth = taskMonth;
           }
           tile.state = 'planted';
           tile.cropId = task.cropId;
@@ -2551,7 +2650,8 @@
             const rotPenalty = (tile.monocultureCount && tile.monocultureCount > 0)
               ? Math.max(0.75, 1 - tile.monocultureCount * (ownsItem('calcaria_adubo') ? 0.04 : 0.08))
               : 1.0;
-            const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * limeBonus * rotPenalty * wearFactor;
+            const seasonMult = getYieldSeasonMultiplier(crop, tile.plantedMonth || taskMonth);
+            const yieldHa = (crop.baseYieldPerHa + (tile.cared ? crop.careBonusYieldPerHa : 0)) * limeBonus * rotPenalty * wearFactor * seasonMult;
             if (sacksAdded[crop.id] === undefined) sacksAdded[crop.id] = 0;
             sacksAdded[crop.id] += yieldHa / TILES_PER_HA;
           }
@@ -2560,6 +2660,7 @@
           tile.cropId = null;
           tile.ripe = false;
           tile.cared = false;
+          tile.plantedMonth = null;
         });
 
         addMachineWear(Math.max(1, Math.round(coords.length / 20)));
@@ -2685,6 +2786,7 @@
         id: `task_harvest_${Date.now()}`,
         type: 'harvest',
         cropId: null,
+        monthIdx: Number(state.calendarMonth || 10),
         tileKeys: ripeTiles.map(({ tx, ty }) => `${tx},${ty}`),
         totalSeconds: durationSec,
         remainingSeconds: durationSec,
@@ -3124,7 +3226,7 @@
             ctx.fillText(`HA ${hc + 1},${hr + 1} À VENDA`, hx + HA_PX / 2, by + 19);
             ctx.fillStyle = '#b9f5a6';
             ctx.font = 'bold 11px system-ui, sans-serif';
-            ctx.fillText(`R$ ${(ha.price / 1000).toFixed(1).replace('.', ',')} mil`, hx + HA_PX / 2, by + 36);
+            ctx.fillText(`R$ ${Math.round(ha.price / 1000)} mil`, hx + HA_PX / 2, by + 36);
           }
 
           if (!ha.owned && HA_PX * zoom >= 56 && (hc === 0 || hc === HA_COLS - 1 || hr === 0 || hr === HA_ROWS - 1 || (hc === 2 && hr === 4) || (hc === 6 && hr === 3))) {
@@ -3297,11 +3399,14 @@
       cropBar.classList.toggle('visible', tool === 'plant');
 
       const crop = CROPS[selectedCropId];
+      const mObj = getCurrentMonthObj();
+      const yMult = getYieldSeasonMultiplier(crop, mObj.idx);
+      const yLabel = yMult > 1 ? '+18% Safra' : (yMult < 1 ? '-22% Fora Época' : 'Época Regular');
       const activeCount = (state.activeTasks || []).length;
       const activeSuffix = activeCount > 0 ? ` · ${activeCount} em andamento` : '';
       const hints = {
         plow: `Arar: ${formatBRL(getPlowCostHa())}/ha · 6 min/ha${activeSuffix}`,
-        plant: `Plantar ${crop.name}: ${formatBRL(crop.plantCostHa)}/ha · 10 min/ha${activeSuffix}`,
+        plant: `${crop.name} (${mObj.short}): ${formatBRL(crop.plantCostHa)}/ha · ${yLabel} · Venda: ${crop.bestSellLabel}${activeSuffix}`,
         care: `Cuidar: ${formatBRL(getCareCostHa())}/ha · 10 min/ha${activeSuffix}`,
         harvest: `Colher Tudo: 8 min/ha p/ o Silo${activeSuffix}`
       };
@@ -3323,7 +3428,7 @@
       document.getElementById('cropSelectorBar').innerHTML = CROP_LIST.map((c) => `
         <button class="crop-chip ${c.id === selectedCropId ? 'selected' : ''}" onclick="selectCrop('${c.id}')">
           <span>🌱</span>
-          <span>${c.name} (${formatBRL(c.plantCostHa)}/ha)</span>
+          <span>${c.name} (${formatBRL(c.plantCostHa)}/ha · Venda ${c.bestSellLabel})</span>
         </button>
       `).join('');
     }
@@ -3334,12 +3439,12 @@
       const body = document.getElementById('modalBody');
 
       if (type === 'help') {
-        title.textContent = '❓ Como Jogar & Economia';
+        title.textContent = '❓ Como Jogar · Safra Real (RS)';
         body.innerHTML = `
-          <p><strong>1. Caixa Inicial (${formatBRL(INITIAL_CASH)}):</strong> Comece com orçamento enxuto. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
-          <p><strong>2. Sem Pasto Inicial:</strong> Você começa só com o hectare principal de lavoura. Abra <strong>Pasto</strong>, <strong>Galinheiro</strong> ou <strong>Chiqueiro</strong> quando quiser criar animais.</p>
-          <p><strong>3. Contratos Vizinhos:</strong> Em <strong>💾</strong> você pode aceitar serviços em talhões vizinhos para ganhar dinheiro rápido e financiar novas terras ou máquinas.</p>
-          <p><strong>4. Silo & Frete:</strong> Colha a produção no Silo e venda escolhendo Camionete, Caminhão ou Caminhão Próprio.</p>
+          <p><strong>1. Terra & Caixa (RS):</strong> Hectares custam entre <strong>R$ 68 mil e R$ 118 mil</strong> (padrão RS) e o caixa inicial é <strong>${formatBRL(INITIAL_CASH)}</strong>. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
+          <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender no mês/janela ideal da cultura paga <strong>+22% por saca</strong>. Use o botão <strong>📅</strong> no topo para testar épocas.</p>
+          <p><strong>3. Sem Pasto Inicial:</strong> Você começa apenas com o hectare principal de lavoura e pode converter áreas em <strong>Pasto</strong>, <strong>Galinheiro</strong> ou <strong>Chiqueiro</strong>.</p>
+          <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾</strong> para reforçar o caixa.</p>
         `;
       } else if (type === 'shop') {
         if (tabParam) activeShopTab = tabParam;
@@ -3424,6 +3529,7 @@
         const totalInstallmentPerHarvest = state.loans.reduce((sum, l) => sum + l.installmentAmount, 0);
         const totalDebt = state.loans.reduce((sum, l) => sum + l.remainingBalance, 0);
         const maxLoan = getMaxLoanLimit();
+        const mObj = getCurrentMonthObj();
 
         body.innerHTML = `
           <div class="tab-row">
@@ -3432,7 +3538,7 @@
           </div>
 
           ${activeFinanceTab === 'sim' ? `
-            <p>Simule o lucro estimado por cultura e compare com as parcelas cobradas após a colheita (<strong>${formatBRL(totalInstallmentPerHarvest)}</strong>).</p>
+            <p>Simule o lucro sazonal em <strong>${mObj.name} (${mObj.season})</strong> e compare com as parcelas cobradas após a colheita (<strong>${formatBRL(totalInstallmentPerHarvest)}</strong>).</p>
             <div class="field-row">
               <label><strong>Cultura:</strong></label>
               <select id="simCrop" onchange="playSfx('click'); recalcSimulator()">
@@ -3454,7 +3560,7 @@
             <p class="confirm-sub">Parcelas cobradas após colher. Limite atual: <strong>${formatBRL(maxLoan)}</strong> (até 2 ativos). Caixa: <strong>${formatBRL(state.money)}</strong> · Devedor: <strong>${formatBRL(totalDebt)}</strong></p>
             <div class="field-row">
               <label>Valor (R$):</label>
-              <input type="number" id="loanPrincipal" value="6000" step="500" min="1000" max="${maxLoan}" style="width:95px;" oninput="previewLoanTerms()" />
+              <input type="number" id="loanPrincipal" value="15000" step="1000" min="2000" max="${maxLoan}" style="width:95px;" oninput="previewLoanTerms()" />
               <label>Parcelas:</label>
               <select id="loanInstallments" onchange="playSfx('click'); previewLoanTerms()">
                 <option value="2">2 colheitas (+4% juros)</option>
@@ -3485,7 +3591,8 @@
           previewLoanTerms();
         }
       } else if (type === 'silo') {
-        title.textContent = '🌾 Silo e Transporte (Sacas 60kg)';
+        const mObj = getCurrentMonthObj();
+        title.textContent = `🌾 Silo e Sazonalidade (${mObj.short})`;
         const rate = getTransportRatePerSack(state.transportMode);
 
         body.innerHTML = `
@@ -3500,46 +3607,56 @@
           <div style="overflow-x:auto;">
             <table class="farm-table">
               <thead>
-                <tr><th>Cultura</th><th>Silo</th><th>Preço/sc</th><th>Frete/sc</th><th>Qtd</th><th>Vender</th></tr>
+                <tr><th>Cultura</th><th>Silo</th><th>Preço/sc (${mObj.short})</th><th>Melhor Venda</th><th>Qtd</th><th>Vender</th></tr>
               </thead>
               <tbody>
-                ${CROP_LIST.map((c) => `
-                  <tr>
-                    <td><strong>${c.name}</strong></td>
-                    <td>${state.silo[c.id].toFixed(1)} sc</td>
-                    <td>${formatBRL(c.pricePerSack)}</td>
-                    <td>${formatBRL(rate)}</td>
-                    <td><input type="number" id="sellQty_${c.id}" value="${Math.floor(state.silo[c.id])}" style="width:64px;" /></td>
-                    <td><button class="action-btn" onclick="sellCrop('${c.id}')">Vender</button></td>
-                  </tr>
-                `).join('')}
+                ${CROP_LIST.map((c) => {
+                  const effPrice = getEffectiveSellPricePerSack(c, mObj.idx);
+                  const sMult = getSellSeasonMultiplier(c, mObj.idx);
+                  const cls = sMult > 1.05 ? 'price-high' : (sMult < 0.95 ? 'price-low' : 'price-mid');
+                  return `
+                    <tr>
+                      <td><strong>${c.name}</strong><br/><small>Frete ${formatBRL(rate)}/sc</small></td>
+                      <td>${state.silo[c.id].toFixed(1)} sc</td>
+                      <td class="${cls}">${formatBRL(effPrice)}</td>
+                      <td><strong>${c.bestSellLabel}</strong></td>
+                      <td><input type="number" id="sellQty_${c.id}" value="${Math.floor(state.silo[c.id])}" style="width:64px;" /></td>
+                      <td><button class="action-btn" onclick="sellCrop('${c.id}')">Vender</button></td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
         `;
       } else if (type === 'prices') {
-        title.textContent = '📊 Tabela de Culturas & Custos';
+        const mObj = getCurrentMonthObj();
+        title.textContent = `📊 Tabela Sazonal · ${mObj.name}`;
         body.innerHTML = `
           <div style="overflow-x:auto;">
             <table class="farm-table">
               <thead>
                 <tr>
                   <th>Cultura</th>
-                  <th>Plantar/ha</th>
-                  <th>Rendimento</th>
-                  <th>Preço/sc</th>
+                  <th>Época Plantio</th>
+                  <th>Melhor Venda</th>
+                  <th>Preço (${mObj.short})</th>
                   <th>Bruto/ha</th>
                 </tr>
               </thead>
               <tbody>
                 ${CROP_LIST.map((c) => {
-                  const grossHa = Math.round(c.baseYieldPerHa * c.pricePerSack);
+                  const yMult = getYieldSeasonMultiplier(c, mObj.idx);
+                  const sMult = getSellSeasonMultiplier(c, mObj.idx);
+                  const effPrice = getEffectiveSellPricePerSack(c, mObj.idx);
+                  const grossHa = Math.round(c.baseYieldPerHa * yMult * effPrice);
+                  const cls = sMult > 1.05 ? 'price-high' : (sMult < 0.95 ? 'price-low' : 'price-mid');
                   return `
                     <tr>
-                      <td><strong>${c.name}</strong></td>
-                      <td><strong>${formatBRL(c.plantCostHa)}</strong></td>
-                      <td>${c.baseYieldPerHa} sc/ha</td>
-                      <td class="price-high">${formatBRL(c.pricePerSack)}</td>
+                      <td><strong>${c.name}</strong><br/><small>Plantio ${formatBRL(c.plantCostHa)}/ha</small></td>
+                      <td><strong>${c.plantWindowLabel}</strong><br/><small>${yMult > 1 ? '+18% safra' : (yMult < 1 ? '-22% fora' : 'regular')}</small></td>
+                      <td><strong>${c.bestSellLabel}</strong></td>
+                      <td class="${cls}">${formatBRL(effPrice)}</td>
                       <td><strong>${formatBRL(grossHa)}</strong></td>
                     </tr>
                   `;
@@ -3749,7 +3866,7 @@
           <h4 style="margin:12px 0 6px;">Oficina & Save do Jogo</h4>
           <p class="confirm-sub">Desgaste atual das máquinas: <strong>${state.machineWear || 0}%</strong>.</p>
           <div class="field-row">
-            <button class="action-btn gold" onclick="repairMachinery()">Revisar Oficina (${formatBRL(Math.max(800, (state.machineWear || 0) * 90))})</button>
+            <button class="action-btn gold" onclick="repairMachinery()">Revisar Oficina (${formatBRL(Math.max(1200, (state.machineWear || 0) * 140))})</button>
             <button class="action-btn" onclick="saveGame()">Salvar</button>
             <button class="action-btn gold" onclick="loadGame()">Carregar</button>
             <button class="action-btn danger" onclick="resetGame()">Novo Jogo</button>
@@ -3764,8 +3881,9 @@
       const cropId = document.getElementById('simCrop')?.value || 'soja';
       const ha = Math.max(0.25, Number(document.getElementById('simHa')?.value) || 1);
       const modeId = document.getElementById('simTransport')?.value || state.transportMode;
+      const mObj = getCurrentMonthObj();
       const crop = CROPS[cropId];
-      const econ = getPlantAreaEconomics(crop, ha, false, modeId);
+      const econ = getPlantAreaEconomics(crop, ha, false, modeId, mObj.idx);
       const installmentPerHarvest = state.loans.reduce((s, l) => s + l.installmentAmount, 0);
       const afterLoanProfit = econ.estimatedProfit - installmentPerHarvest;
 
@@ -3780,7 +3898,7 @@
         <div class="summary-box"><span>Sobra Líquida</span><strong class="${afterLoanProfit >= 0 ? 'profit-pos' : 'profit-neg'}">${formatBRL(afterLoanProfit)}</strong></div>
       `;
 
-      verdict.textContent = `${crop.name}: ${econ.sacks.toFixed(1)} sc estimadas · Receita bruta ${formatBRL(econ.grossRevenue)} · Frete ${formatBRL(econ.transportCost)}.`;
+      verdict.textContent = `${crop.name} (${mObj.short}): ${econ.sacks.toFixed(1)} sc · Preço atual ${formatBRL(econ.sellPrice)}/sc (melhor venda: ${crop.bestSellLabel}) · Receita bruta ${formatBRL(econ.grossRevenue)} · Frete ${formatBRL(econ.transportCost)}.`;
     }
 
     function changeTransportMode(newMode) {
@@ -3936,7 +4054,7 @@
       const inst = Number(document.getElementById('loanInstallments')?.value) || 3;
       const calc = getLoanCalculation(p, inst);
       const atLimit = state.loans.length >= 2;
-      const validAmount = calc.cleanP >= 1000 && calc.cleanP <= calc.maxLimit;
+      const validAmount = calc.cleanP >= 2000 && calc.cleanP <= calc.maxLimit;
 
       box.innerHTML = `
         <span>Resumo (${(calc.interestRate * 100).toFixed(0)}% juros · Limite: ${formatBRL(calc.maxLimit)})</span>
@@ -3958,9 +4076,9 @@
       const maxLimit = getMaxLoanLimit();
       const principal = Math.round(Number(document.getElementById('loanPrincipal').value) || 0);
       const installments = Number(document.getElementById('loanInstallments').value) || 3;
-      if (principal < 1000 || principal > maxLimit) {
+      if (principal < 2000 || principal > maxLimit) {
         playSfx('error');
-        showToast(`Valor permitido: entre R$ 1.000 e ${formatBRL(maxLimit)}.`);
+        showToast(`Valor permitido: entre R$ 2.000 e ${formatBRL(maxLimit)}.`);
         return;
       }
       const calc = getLoanCalculation(principal, installments);
@@ -4034,27 +4152,29 @@
         }
       }
 
+      const mObj = getCurrentMonthObj();
+      const unitPrice = getEffectiveSellPricePerSack(crop, mObj.idx);
       const rate = getTransportRatePerSack(state.transportMode);
-      const gross = qty * crop.pricePerSack;
+      const gross = qty * unitPrice;
       const freight = qty * rate;
       const net = Math.round(gross - freight);
       state.silo[cropId] = Math.max(0, +(state.silo[cropId] - qty).toFixed(2));
       state.money += net;
       updateHUD();
       playSfx('coin');
-      showToast(`Vendeu ${qty} sc · Frete ${formatBRL(freight)} · Líquido: ${formatBRL(net)}`);
+      showToast(`Vendeu ${qty} sc (${formatBRL(unitPrice)}/sc) · Líquido: ${formatBRL(net)}`);
       closeModal();
       openModal('silo');
     }
 
     function saveGame() {
-      localStorage.setItem('fazendaPixelSafraReal_RS_v4', JSON.stringify(state));
+      localStorage.setItem('fazendaPixelSafraReal_RS_v5', JSON.stringify(state));
       playSfx('done');
       showToast('Jogo salvo!');
     }
 
     function loadGame() {
-      const raw = localStorage.getItem('fazendaPixelSafraReal_RS_v4');
+      const raw = localStorage.getItem('fazendaPixelSafraReal_RS_v5');
       if (!raw) {
         playSfx('error');
         showToast('Nenhum save encontrado!');
@@ -4062,6 +4182,7 @@
       }
       state = JSON.parse(raw);
       if (!Array.isArray(state.activeTasks)) state.activeTasks = [];
+      if (!state.calendarMonth) state.calendarMonth = 10;
       if (typeof state.woolKg !== 'number') state.woolKg = 0;
       if (typeof state.eggsDozens !== 'number') state.eggsDozens = 0;
       state.hectares.forEach(h => {
@@ -4069,16 +4190,18 @@
       });
       clearSelection();
       updateHUD();
+      setTool(currentTool);
       renderWorld();
       playSfx('done');
       showToast('Save carregado!');
     }
 
     function resetGame() {
-      localStorage.removeItem('fazendaPixelSafraReal_RS_v4');
+      localStorage.removeItem('fazendaPixelSafraReal_RS_v5');
       state = createInitialState();
       clearSelection();
       updateHUD();
+      setTool('plow');
       focusMainHectare();
       closeModal();
       playSfx('click');
@@ -4089,6 +4212,11 @@
       document.getElementById('hudMoney').textContent = formatBRL(state.money);
       const ownedCount = state.hectares.filter((h) => h.owned).length;
       document.getElementById('hudHectares').textContent = `${ownedCount} / 100`;
+      const mObj = getCurrentMonthObj();
+      const seasonEl = document.getElementById('hudSeasonLabel');
+      if (seasonEl) {
+        seasonEl.textContent = `${mObj.short} · ${mObj.season}`;
+      }
       const totalSacks = Object.values(state.silo).reduce((a, b) => a + b, 0);
       document.getElementById('hudSiloChip').textContent = `🌾 Silo: ${totalSacks.toFixed(1)} sc`;
       const cattleChip = document.getElementById('hudLivestockChip');
@@ -4136,7 +4264,7 @@
         for (let lx = 0; lx < SUB_SIZE; lx++) {
           const tx = ha.hc * SUB_SIZE + lx;
           const ty = ha.hr * SUB_SIZE + ly;
-          state.tiles[ty * TOTAL_TILE_COLS + tx] = { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0 };
+          state.tiles[ty * TOTAL_TILE_COLS + tx] = { state: 'raw', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
         }
       }
       updateHUD();
@@ -4439,7 +4567,7 @@
         showToast('Máquinas já estão revisadas.');
         return;
       }
-      const cost = Math.max(800, wear * 90);
+      const cost = Math.max(1200, wear * 140);
       if (state.money < cost) {
         playSfx('error');
         showToast(`Saldo insuficiente para revisão (${formatBRL(cost)}).`);
