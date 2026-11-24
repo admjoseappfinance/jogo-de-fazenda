@@ -225,7 +225,7 @@
       flex: 1;
       min-height: 0;
       width: 100%;
-      padding: 7px;
+      padding: 6px;
       border-radius: 18px;
       background: linear-gradient(180deg, #d5a570 0%, #9b6434 100%);
       border: 3px solid var(--wood-frame-dark);
@@ -239,12 +239,11 @@
     .world-inner {
       width: 100%;
       height: 100%;
-      border-radius: 11px;
-      border: 3px solid #693f1b;
-      box-shadow: inset 0 0 0 2px #47280e;
+      border-radius: 12px;
+      border: 2.5px solid #693f1b;
       overflow: hidden;
       position: relative;
-      background: #4e8c2c;
+      background: #5ca32e;
     }
 
     canvas#farmCanvas {
@@ -311,7 +310,7 @@
       left: 8px;
       top: 8px;
       z-index: 14;
-      background: rgba(91, 56, 26, 0.94);
+      background: rgba(91, 56, 26, 0.92);
       border: 2px solid #3a210c;
       box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
       color: #fff8e7;
@@ -470,9 +469,9 @@
     }
 
     .tool-card.active {
-      background: linear-gradient(180deg, #b8ad96 0%, #8c826d 100%);
+      background: linear-gradient(180deg, #d99b52 0%, #b5732b 100%);
       border-color: var(--gold-accent);
-      box-shadow: 0 2.5px 0 #9c6f08, 0 0 10px rgba(242, 183, 41, 0.65);
+      box-shadow: 0 2.5px 0 #73430e, 0 0 10px rgba(242, 183, 41, 0.65);
     }
 
     .tool-card.harvest-ready {
@@ -752,7 +751,7 @@
           🌾 Silo: 0.0 sc
         </div>
         <div class="mini-hud-chip" onclick="playSfx('click'); openModal('livestock')" id="hudLivestockChip">
-          🐄 Rebanho: 3
+          🐄 Rebanho: 8
         </div>
         <div class="mini-hud-chip" onclick="playSfx('click'); openModal('shop')">
           🚜 Loja
@@ -1483,7 +1482,7 @@
     const TILES_PER_HA = 64;
     const TOTAL_TILE_COLS = HA_COLS * SUB_SIZE;
     const TOTAL_TILE_ROWS = HA_ROWS * SUB_SIZE;
-    const TILE_PX = 36;
+    const TILE_PX = 40;
     const HA_PX = TILE_PX * SUB_SIZE;
     const MAP_PX = HA_COLS * HA_PX;
 
@@ -1801,7 +1800,7 @@
         const ly = ty % SUB_SIZE;
 
         if (hc === 4 && hr === 4) {
-          const isPlanted = (lx >= 2 && lx <= 5) && (ly >= 2 && ly <= 5);
+          const isPlanted = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6) && !(lx >= 3 && lx <= 6 && ly === 3);
           const isPlowed = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6);
           if (isPlanted) {
             return { state: 'planted', cropId: 'milho', growthMonths: 2, cared: true, lastCropId: null, monocultureCount: 0 };
@@ -1815,8 +1814,13 @@
 
       const starterCattle = [
         { id: 101, type: 'vaca', arrobas: 13.5, ageMonths: 26, pregnantMonths: 0, monthsSinceCalving: 12 },
-        { id: 102, type: 'ovelha', arrobas: 2.5, ageMonths: 14, pregnantMonths: 0, monthsSinceCalving: 12 },
-        { id: 103, type: 'ovelha', arrobas: 2.4, ageMonths: 12, pregnantMonths: 0, monthsSinceCalving: 12 }
+        { id: 102, type: 'vaca', arrobas: 14.0, ageMonths: 28, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 103, type: 'ovelha', arrobas: 2.5, ageMonths: 14, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 104, type: 'ovelha', arrobas: 2.4, ageMonths: 12, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 105, type: 'ovelha', arrobas: 2.6, ageMonths: 15, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 106, type: 'ovelha', arrobas: 2.3, ageMonths: 11, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 107, type: 'ovelha', arrobas: 2.4, ageMonths: 13, pregnantMonths: 0, monthsSinceCalving: 12 },
+        { id: 108, type: 'ovelha', arrobas: 2.5, ageMonths: 14, pregnantMonths: 0, monthsSinceCalving: 12 }
       ];
 
       return {
@@ -1878,6 +1882,340 @@
     const ctx = canvas.getContext('2d');
     const worldViewport = document.getElementById('worldViewport');
 
+    /* =========================================================================
+       ATLAS DE TEXTURAS E SPRITES DE ALTA DEFINIÇÃO (ESTILO ARTE 3D PINTADA)
+       ========================================================================= */
+    const SPRITE_ATLAS = {};
+
+    function makeOffscreen(w, h) {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      return { canvas: c, ctx: c.getContext('2d') };
+    }
+
+    function buildSpriteAtlas() {
+      const S = 128;
+
+      // 1. Relva rica com textura pintada e tufos sombreados
+      ['grassOwned', 'grassUnowned'].forEach((key) => {
+        const owned = key === 'grassOwned';
+        const { canvas: c, ctx: g } = makeOffscreen(S, S);
+        const grad = g.createLinearGradient(0, 0, S, S);
+        grad.addColorStop(0, owned ? '#86cb43' : '#73b336');
+        grad.addColorStop(1, owned ? '#6eb032' : '#5e9929');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, S, S);
+
+        for (let i = 0; i < 42; i++) {
+          const px = ((i * 37) % 116) + 6;
+          const py = ((i * 53) % 116) + 6;
+          g.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 190, 0.14)' : 'rgba(34, 74, 14, 0.14)';
+          g.beginPath();
+          g.ellipse(px, py, 9, 5, (i % 4) * 0.4, 0, Math.PI * 2);
+          g.fill();
+        }
+
+        const tufts = [[24, 28], [84, 34], [48, 86], [102, 96]];
+        tufts.forEach(([bx, by]) => {
+          g.fillStyle = 'rgba(26, 58, 10, 0.32)';
+          g.beginPath();
+          g.ellipse(bx, by + 5, 11, 4, 0, 0, Math.PI * 2);
+          g.fill();
+
+          const blades = [[-7, -11], [-2, -14], [3, -13], [8, -9]];
+          blades.forEach(([dx, dy]) => {
+            g.strokeStyle = '#336614';
+            g.lineWidth = 3.2;
+            g.lineCap = 'round';
+            g.beginPath();
+            g.moveTo(bx, by + 3);
+            g.quadraticCurveTo(bx + dx * 0.4, by + dy * 0.6, bx + dx, by + dy);
+            g.stroke();
+
+            g.strokeStyle = owned ? '#a9ed5c' : '#94d64b';
+            g.lineWidth = 1.8;
+            g.beginPath();
+            g.moveTo(bx, by + 2);
+            g.quadraticCurveTo(bx + dx * 0.4, by + dy * 0.6, bx + dx * 0.9, by + dy * 0.95);
+            g.stroke();
+          });
+        });
+
+        SPRITE_ATLAS[key] = c;
+      });
+
+      // 2. Solo arado com sulcos 3D profundos
+      ['soilPlowed', 'soilPlanted'].forEach((key) => {
+        const dark = key === 'soilPlanted';
+        const { canvas: c, ctx: g } = makeOffscreen(S, S);
+        g.fillStyle = dark ? '#6e4221' : '#9c6334';
+        g.fillRect(0, 0, S, S);
+
+        const rows = 5;
+        const rowH = S / rows;
+        for (let r = 0; r < rows; r++) {
+          const y0 = r * rowH;
+          const rg = g.createLinearGradient(0, y0, 0, y0 + rowH);
+          rg.addColorStop(0, dark ? '#8c582e' : '#bf8049');
+          rg.addColorStop(0.45, dark ? '#6e4221' : '#9c6334');
+          rg.addColorStop(0.85, dark ? '#3d210d' : '#573114');
+          rg.addColorStop(1, dark ? '#543015' : '#784821');
+          g.fillStyle = rg;
+          g.fillRect(0, y0, S, rowH);
+
+          for (let k = 0; k < 8; k++) {
+            const cx = ((r * 29 + k * 17) % 118) + 5;
+            const cy = y0 + rowH * 0.35 + ((k % 3) * 2);
+            g.fillStyle = dark ? 'rgba(255,205,150,0.16)' : 'rgba(255,224,180,0.28)';
+            g.beginPath();
+            g.arc(cx, cy, 2.2, 0, Math.PI * 2);
+            g.fill();
+          }
+        }
+        SPRITE_ATLAS[key] = c;
+      });
+
+      // 3. Celeiro Vermelho + Silo Metálico 3D (alta resolução)
+      {
+        const { canvas: c, ctx: g } = makeOffscreen(340, 220);
+
+        // Sombra geral no chão
+        g.fillStyle = 'rgba(24, 38, 12, 0.34)';
+        g.beginPath();
+        g.ellipse(82, 178, 52, 18, 0, 0, Math.PI * 2);
+        g.ellipse(215, 176, 98, 26, -0.05, 0, Math.PI * 2);
+        g.fill();
+
+        // Silo metálico cilíndrico
+        const siloGrad = g.createLinearGradient(42, 0, 118, 0);
+        siloGrad.addColorStop(0, '#9aa5b1');
+        siloGrad.addColorStop(0.35, '#eef2f6');
+        siloGrad.addColorStop(0.75, '#b8c2cc');
+        siloGrad.addColorStop(1, '#68737d');
+        g.fillStyle = siloGrad;
+        g.strokeStyle = '#334155';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.roundRect(44, 54, 72, 124, 8);
+        g.fill();
+        g.stroke();
+
+        // Anéis metálicos do silo
+        g.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+        g.lineWidth = 2;
+        [82, 110, 138, 162].forEach((ry) => {
+          g.beginPath();
+          g.moveTo(45, ry);
+          g.lineTo(115, ry);
+          g.stroke();
+        });
+
+        // Cúpula vermelha do silo
+        const domeGrad = g.createLinearGradient(44, 22, 116, 54);
+        domeGrad.addColorStop(0, '#e3533d');
+        domeGrad.addColorStop(0.5, '#b83221');
+        domeGrad.addColorStop(1, '#7a1c11');
+        g.fillStyle = domeGrad;
+        g.strokeStyle = '#471009';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(80, 56, 36, Math.PI, 0);
+        g.closePath();
+        g.fill();
+        g.stroke();
+
+        // Escada lateral do silo
+        g.strokeStyle = '#cbd5e1';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.moveTo(104, 56); g.lineTo(104, 176);
+        g.moveTo(112, 56); g.lineTo(112, 176);
+        for (let ly = 64; ly <= 172; ly += 10) {
+          g.moveTo(104, ly); g.lineTo(112, ly);
+        }
+        g.stroke();
+
+        // Corpo do celeiro (perspetiva 3D)
+        g.fillStyle = '#99271b';
+        g.strokeStyle = '#4a110a';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(228, 92);
+        g.lineTo(298, 76);
+        g.lineTo(298, 152);
+        g.lineTo(228, 174);
+        g.closePath();
+        g.fill();
+        g.stroke();
+
+        // Frente vermelha do celeiro
+        const barnFront = g.createLinearGradient(132, 82, 228, 174);
+        barnFront.addColorStop(0, '#d9412e');
+        barnFront.addColorStop(1, '#ab2b1c');
+        g.fillStyle = barnFront;
+        g.beginPath();
+        g.moveTo(132, 92);
+        g.lineTo(180, 56);
+        g.lineTo(228, 92);
+        g.lineTo(228, 174);
+        g.lineTo(132, 174);
+        g.closePath();
+        g.fill();
+        g.stroke();
+
+        // Telhado inclinado
+        g.fillStyle = '#6b271c';
+        g.beginPath();
+        g.moveTo(124, 96);
+        g.lineTo(180, 50);
+        g.lineTo(254, 38);
+        g.lineTo(306, 76);
+        g.lineTo(228, 94);
+        g.lineTo(180, 58);
+        g.closePath();
+        g.fill();
+        g.stroke();
+
+        // Janela superior e porta em X branca
+        g.fillStyle = '#fff9eb';
+        g.strokeStyle = '#4a110a';
+        g.lineWidth = 2.5;
+        g.fillRect(166, 76, 28, 26);
+        g.strokeRect(166, 76, 28, 26);
+        g.fillStyle = '#3b1e0c';
+        g.fillRect(171, 81, 18, 16);
+
+        g.fillStyle = '#fff9eb';
+        g.fillRect(156, 118, 48, 56);
+        g.strokeRect(156, 118, 48, 56);
+        g.fillStyle = '#8f4722';
+        g.fillRect(162, 124, 36, 48);
+        g.strokeStyle = '#fff9eb';
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.moveTo(162, 124); g.lineTo(198, 172);
+        g.moveTo(198, 124); g.lineTo(162, 172);
+        g.stroke();
+
+        // Cocho de feno ao lado
+        g.fillStyle = '#8f5422';
+        g.strokeStyle = '#3d210b';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(246, 136, 48, 28, 5);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#f2c94c';
+        g.beginPath();
+        g.roundRect(251, 140, 38, 16, 4);
+        g.fill();
+
+        SPRITE_ATLAS.barn = c;
+      }
+
+      // 4. Trator Vermelho 3D
+      {
+        const { canvas: c, ctx: g } = makeOffscreen(140, 110);
+        g.fillStyle = 'rgba(20, 32, 10, 0.34)';
+        g.beginPath();
+        g.ellipse(70, 86, 46, 14, 0, 0, Math.PI * 2);
+        g.fill();
+
+        // Capô vermelho
+        const hood = g.createLinearGradient(32, 34, 98, 74);
+        hood.addColorStop(0, '#f24b38');
+        hood.addColorStop(1, '#a82214');
+        g.fillStyle = hood;
+        g.strokeStyle = '#470d07';
+        g.lineWidth = 2.6;
+        g.beginPath();
+        g.roundRect(38, 38, 62, 32, 8);
+        g.fill();
+        g.stroke();
+
+        // Cabine
+        g.fillStyle = '#d93829';
+        g.beginPath();
+        g.roundRect(32, 18, 34, 28, 5);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#bae6fd';
+        g.fillRect(38, 23, 22, 15);
+
+        // Chaminé escapamento
+        g.fillStyle = '#334155';
+        g.fillRect(82, 22, 6, 18);
+
+        // Roda traseira grande
+        g.fillStyle = '#1e242b';
+        g.strokeStyle = '#090c0f';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(46, 72, 22, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#f59e0b';
+        g.beginPath();
+        g.arc(46, 72, 9, 0, Math.PI * 2);
+        g.fill();
+
+        // Roda dianteira
+        g.fillStyle = '#1e242b';
+        g.beginPath();
+        g.arc(96, 76, 14, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#f59e0b';
+        g.beginPath();
+        g.arc(96, 76, 6, 0, Math.PI * 2);
+        g.fill();
+
+        SPRITE_ATLAS.tractor = c;
+      }
+
+      // 5. Árvore frondosa 3D
+      {
+        const { canvas: c, ctx: g } = makeOffscreen(140, 150);
+        g.fillStyle = 'rgba(20, 38, 10, 0.34)';
+        g.beginPath();
+        g.ellipse(72, 128, 42, 14, 0, 0, Math.PI * 2);
+        g.fill();
+
+        const trunk = g.createLinearGradient(58, 76, 82, 128);
+        trunk.addColorStop(0, '#8f5426');
+        trunk.addColorStop(1, '#4f2b10');
+        g.fillStyle = trunk;
+        g.strokeStyle = '#2e1706';
+        g.lineWidth = 2.6;
+        g.beginPath();
+        g.roundRect(60, 76, 20, 50, 6);
+        g.fill();
+        g.stroke();
+
+        const blobs = [
+          [70, 64, 38, '#3f7d1c'],
+          [44, 70, 28, '#4a8f22'],
+          [96, 70, 28, '#468720'],
+          [52, 46, 30, '#5ea82e'],
+          [88, 48, 28, '#589e2a'],
+          [70, 36, 32, '#78c93e']
+        ];
+        blobs.forEach(([bx, by, br, col]) => {
+          g.fillStyle = col;
+          g.strokeStyle = '#234a0c';
+          g.lineWidth = 2.4;
+          g.beginPath();
+          g.arc(bx, by, br, 0, Math.PI * 2);
+          g.fill();
+          g.stroke();
+        });
+        SPRITE_ATLAS.tree = c;
+      }
+    }
+
+    buildSpriteAtlas();
+
     function resizeCanvas() {
       const rect = worldViewport.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -1917,10 +2255,10 @@
 
     function focusMainHectare() {
       const rect = worldViewport.getBoundingClientRect();
-      const targetZoom = Math.min(1.55, Math.max(0.72, (Math.min(rect.width, rect.height) - 20) / (HA_PX * 1.15)));
+      const targetZoom = Math.min(1.45, Math.max(0.65, (Math.min(rect.width, rect.height) - 24) / (HA_PX * 1.25)));
       zoom = +targetZoom.toFixed(2);
       const centerWorldX = 4 * HA_PX + HA_PX / 2;
-      const centerWorldY = 4 * HA_PX;
+      const centerWorldY = 3.95 * HA_PX;
       camX = rect.width / 2 - centerWorldX * zoom;
       camY = rect.height / 2 - centerWorldY * zoom;
       clampCamera();
@@ -2495,195 +2833,102 @@
     }
 
     /* =========================================================================
-       VISUAL ESTILO REFERÊNCIA (PASTO, CELEIRO, SILO, TRATOR, TRILHAS & LAVOURAS)
+       RENDERIZAÇÃO DO MUNDO COM TEXTURAS PINTADAS E SPRITES 3D
        ========================================================================= */
-    function hashCoord(a, b) {
-      const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
-      return n - Math.floor(n);
-    }
-
-    function drawRawGrassTile(x, y, size, tx, ty, owned) {
-      const r1 = hashCoord(tx, ty);
-      const r2 = hashCoord(tx + 19, ty + 37);
-
-      if (owned) {
-        ctx.fillStyle = (tx + ty) % 2 === 0 ? '#74bd3f' : '#6ab337';
-      } else {
-        ctx.fillStyle = (tx + ty) % 2 === 0 ? '#65a635' : '#5b992e';
-      }
-      ctx.fillRect(x, y, size, size);
-
-      if (size * zoom < 9) return;
-
-      const bladeColor = owned ? '#93dc54' : '#82c748';
-      const darkBlade = owned ? '#497e21' : '#3d6b1b';
-
-      const drawTuft = (bx, by) => {
-        ctx.strokeStyle = darkBlade;
-        ctx.lineWidth = 1.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(bx, by + 3.5);
-        ctx.lineTo(bx - 3, by - 2.2);
-        ctx.moveTo(bx, by + 3.5);
-        ctx.lineTo(bx + 0.8, by - 3.6);
-        ctx.moveTo(bx, by + 3.5);
-        ctx.lineTo(bx + 3.8, by - 1.5);
-        ctx.stroke();
-
-        ctx.strokeStyle = bladeColor;
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.moveTo(bx, by + 2.8);
-        ctx.lineTo(bx - 2.4, by - 1.8);
-        ctx.moveTo(bx, by + 2.8);
-        ctx.lineTo(bx + 3.2, by - 1.2);
-        ctx.stroke();
-      };
-
-      drawTuft(x + 9 + r1 * 6, y + 11 + r2 * 5);
-      drawTuft(x + 23 + r2 * 6, y + 23 + r1 * 6);
-
-      if (r1 > 0.65) {
-        ctx.fillStyle = '#fff9c4';
-        ctx.beginPath();
-        ctx.arc(x + 27, y + 10, 2.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(x + 27, y + 10, 0.9, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (r2 > 0.72) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(x + 11, y + 26, 1.9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    function drawPlowedSoilTile(x, y, size, tx, ty, isPlanted) {
-      ctx.fillStyle = isPlanted ? '#6e4320' : '#b87d48';
-      ctx.fillRect(x, y, size, size);
-
-      if (size * zoom < 10) return;
-
-      const furrowCount = 4;
-      for (let f = 1; f <= furrowCount; f++) {
-        const fy = y + (size / (furrowCount + 1)) * f;
-        ctx.fillStyle = isPlanted ? '#472810' : '#7d4b22';
-        ctx.fillRect(x + 2, fy - 1.6, size - 4, 3.2);
-
-        ctx.fillStyle = isPlanted ? '#8a572d' : '#cfa06b';
-        ctx.fillRect(x + 2, fy - 2.5, size - 4, 1.2);
-      }
-    }
-
-    function drawCropWithLevelBar(x, y, size, crop, growthMonths, cared) {
+    function drawCrop3D(x, y, size, crop, growthMonths, cared) {
       const isRipe = growthMonths >= crop.monthsToGrow;
-      const progress = Math.min(1, Math.max(0.15, growthMonths / crop.monthsToGrow));
-      const scale = Math.max(0.6, (size / 36) * (0.66 + 0.34 * progress));
+      const progress = Math.min(1, Math.max(0.2, growthMonths / crop.monthsToGrow));
+      const cx = x + size * 0.5;
+      const cy = y + size * 0.54;
 
-      ctx.save();
-      ctx.translate(x + size * 0.5, y + size * 0.52);
+      if (size * zoom < 12) {
+        ctx.fillStyle = isRipe ? '#e6c229' : crop.color;
+        ctx.fillRect(x + 3, y + 3, size - 6, size - 6);
+        return;
+      }
 
-      ctx.fillStyle = 'rgba(18, 12, 4, 0.34)';
+      // Sombra no solo
+      ctx.fillStyle = 'rgba(20, 12, 4, 0.36)';
       ctx.beginPath();
-      ctx.ellipse(0, 8.2 * (size / 36), 8.5 * (size / 36), 3.2 * (size / 36), 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, y + size * 0.8, size * 0.3, size * 0.11, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      const scale = (size / 40) * (0.68 + 0.32 * progress);
+      ctx.save();
+      ctx.translate(cx, cy);
       ctx.scale(scale, scale);
 
       if (progress < 0.45) {
-        ctx.strokeStyle = '#36781a';
-        ctx.lineWidth = 2.5;
+        // Broto verde exuberante
+        ctx.strokeStyle = '#2d6614';
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, 8);
-        ctx.lineTo(0, -1);
+        ctx.moveTo(0, 10);
+        ctx.lineTo(0, -3);
         ctx.stroke();
 
-        ctx.fillStyle = '#7cd642';
-        ctx.strokeStyle = '#265410';
-        ctx.lineWidth = 1.15;
+        ctx.fillStyle = '#7be043';
+        ctx.strokeStyle = '#23520e';
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.ellipse(-4.8, -2, 4.8, 2.4, -0.45, 0, Math.PI * 2);
-        ctx.ellipse(4.8, -2, 4.8, 2.4, 0.45, 0, Math.PI * 2);
+        ctx.ellipse(-6, -3, 6, 3, -0.45, 0, Math.PI * 2);
+        ctx.ellipse(6, -3, 6, 3, 0.45, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       } else {
-        ctx.strokeStyle = isRipe ? '#8c7a23' : '#37781c';
-        ctx.lineWidth = 2.7;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-1, 8);
-        ctx.quadraticCurveTo(-2, -1, 1.5, -10.5);
-        ctx.stroke();
+        // Planta adulta em 3D (espiga dourada/verde volumosa)
+        const leafCol = isRipe ? '#a3992e' : '#52a828';
+        const leafHighlight = isRipe ? '#d4c94c' : '#85db48';
 
-        ctx.fillStyle = isRipe ? '#bfa835' : '#5db832';
-        ctx.strokeStyle = '#265210';
-        ctx.lineWidth = 1.15;
+        // Folhas laterais
+        ctx.fillStyle = leafCol;
+        ctx.strokeStyle = '#24470d';
+        ctx.lineWidth = 1.4;
+        [[-8, 3, -0.55], [8, 3, 0.55], [-6, -4, -0.35], [6, -4, 0.35]].forEach(([lx, ly, rot]) => {
+          ctx.beginPath();
+          ctx.ellipse(lx, ly, 7.5, 3.2, rot, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        // Espiga/copa principal com gradiente 3D
+        const earGrad = ctx.createLinearGradient(-5, -15, 6, 6);
+        if (crop.id === 'milho' || crop.id === 'trigo' || crop.id === 'aveia') {
+          earGrad.addColorStop(0, isRipe ? '#fff066' : '#d9f054');
+          earGrad.addColorStop(1, isRipe ? '#d98a0b' : '#73a825');
+        } else if (crop.id === 'sorgo') {
+          earGrad.addColorStop(0, '#ff8a4c');
+          earGrad.addColorStop(1, '#a83414');
+        } else {
+          earGrad.addColorStop(0, isRipe ? '#ffe64d' : leafHighlight);
+          earGrad.addColorStop(1, isRipe ? '#c48f12' : '#3a7d19');
+        }
+
+        ctx.fillStyle = earGrad;
+        ctx.strokeStyle = isRipe ? '#6e4304' : '#234a0d';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.ellipse(-6.8, 2, 5.4, 2.5, -0.55, 0, Math.PI * 2);
-        ctx.ellipse(6.8, 3, 5.4, 2.5, 0.55, 0, Math.PI * 2);
+        ctx.ellipse(0, -5, 5.2, 10.5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        const headColor = isRipe ? '#ffe640' : crop.ripeColor;
-        const borderColor = isRipe ? '#965c02' : '#784906';
-
-        if (crop.id === 'milho' || crop.id === 'sorgo') {
-          ctx.fillStyle = headColor;
-          ctx.strokeStyle = borderColor;
-          ctx.lineWidth = 1.25;
-          ctx.beginPath();
-          ctx.ellipse(3, -6.2, 3.8, 6.4, 0.22, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        } else if (crop.id === 'soja') {
-          ctx.fillStyle = headColor;
-          ctx.strokeStyle = borderColor;
-          ctx.lineWidth = 1.15;
-          [[-4.2, -5.2], [4.2, -6.2], [2.2, -1.2]].forEach(([vx, vy]) => {
-            ctx.beginPath();
-            ctx.ellipse(vx, vy, 3.5, 2, -0.35, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-          });
-        } else {
-          ctx.fillStyle = headColor;
-          ctx.strokeStyle = borderColor;
-          ctx.lineWidth = 1.05;
-          const grains = [[1.5, -10.5], [5.6, -7.8], [0.5, -5.8], [4.6, -3.2], [0, -1]];
-          grains.forEach(([gx, gy]) => {
-            ctx.beginPath();
-            ctx.ellipse(gx, gy, 3.2, 1.85, -0.45, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-          });
-        }
+        // Grãos em relevo na espiga
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.beginPath();
+        ctx.arc(-1.5, -8, 1.4, 0, Math.PI * 2);
+        ctx.arc(1.5, -4, 1.4, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       ctx.restore();
 
-      if (size * zoom >= 12) {
-        const barW = size - 6;
-        const barH = 4;
-        const bx = x + 3;
-        const by = y + size - 6;
-
-        ctx.fillStyle = 'rgba(22, 17, 10, 0.82)';
-        ctx.fillRect(bx, by, barW, barH);
-
-        ctx.fillStyle = isRipe ? '#47e339' : '#f5c427';
-        ctx.fillRect(bx + 0.5, by + 0.5, Math.max(1, (barW - 1) * progress), barH - 1);
-      }
-
-      if (cared && size * zoom >= 14) {
-        ctx.fillStyle = '#48cbff';
-        ctx.strokeStyle = '#0c4669';
-        ctx.lineWidth = 1.1;
+      if (cared && size * zoom >= 16) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#075985';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.arc(x + size - 6, y + 6, 2.9, 0, Math.PI * 2);
+        ctx.arc(x + size - 6, y + 6, 3.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       }
@@ -2694,30 +2939,30 @@
       const dy = y2 - y1;
       const len = Math.hypot(dx, dy);
       if (len < 4) return;
-      const steps = Math.max(2, Math.round(len / 28));
+      const steps = Math.max(2, Math.round(len / 34));
 
       ctx.save();
-      ctx.strokeStyle = 'rgba(25, 16, 6, 0.28)';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(22, 14, 5, 0.32)';
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.moveTo(x1, y1 + 4);
-      ctx.lineTo(x2, y2 + 4);
+      ctx.moveTo(x1, y1 + 5);
+      ctx.lineTo(x2, y2 + 5);
       ctx.stroke();
 
-      ctx.strokeStyle = '#5e3514';
-      ctx.lineWidth = 3.2;
+      ctx.strokeStyle = '#573010';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(x1, y1 - 3);
-      ctx.lineTo(x2, y2 - 3);
+      ctx.moveTo(x1, y1 - 4);
+      ctx.lineTo(x2, y2 - 4);
       ctx.moveTo(x1, y1 + 2);
       ctx.lineTo(x2, y2 + 2);
       ctx.stroke();
 
-      ctx.strokeStyle = '#c48345';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#c98749';
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(x1, y1 - 3);
-      ctx.lineTo(x2, y2 - 3);
+      ctx.moveTo(x1, y1 - 4);
+      ctx.lineTo(x2, y2 - 4);
       ctx.moveTo(x1, y1 + 2);
       ctx.lineTo(x2, y2 + 2);
       ctx.stroke();
@@ -2726,230 +2971,117 @@
         const t = i / steps;
         const px = x1 + dx * t;
         const py = y1 + dy * t;
-        ctx.fillStyle = '#a8672d';
-        ctx.strokeStyle = '#4d290d';
-        ctx.lineWidth = 1.4;
+        ctx.fillStyle = '#a6652b';
+        ctx.strokeStyle = '#47250a';
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.roundRect(px - 3, py - 7, 6, 13, 2);
+        ctx.roundRect(px - 3.6, py - 9, 7.2, 16, 2.5);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#e09e5c';
+        ctx.fillStyle = '#e6a565';
         ctx.beginPath();
-        ctx.arc(px, py - 7, 2.2, 0, Math.PI * 2);
+        ctx.arc(px, py - 9, 2.6, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
     }
 
-    function drawTreeCluster(cx, cy, scale = 1) {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(scale, scale);
-
-      ctx.fillStyle = 'rgba(20, 35, 10, 0.26)';
-      ctx.beginPath();
-      ctx.ellipse(2, 16, 18, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#78461e';
-      ctx.strokeStyle = '#3d210b';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.roundRect(-4, 2, 8, 14, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      const puffs = [
-        [0, -10, 15, '#599e28'],
-        [-11, -3, 12, '#4c8c21'],
-        [11, -2, 12.5, '#5da32a'],
-        [0, -16, 11, '#73bf36']
-      ];
-      puffs.forEach(([px, py, r, col]) => {
-        ctx.fillStyle = col;
-        ctx.strokeStyle = '#2b5410';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-      ctx.restore();
-    }
-
-    function drawBarnAndSilo(hx, hy) {
-      ctx.save();
-      ctx.translate(hx + 84, hy + 62);
-
-      ctx.fillStyle = 'rgba(20, 15, 8, 0.28)';
-      ctx.beginPath();
-      ctx.ellipse(-26, 11, 14, 5, 0, 0, Math.PI * 2);
-      ctx.ellipse(20, 13, 28, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#cfd6de';
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.roundRect(-36, -26, 22, 35, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#b93829';
-      ctx.beginPath();
-      ctx.arc(-25, -26, 11, Math.PI, 0);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#c93b2b';
-      ctx.strokeStyle = '#57160f';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(-4, -13, 46, 24, 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#8a2318';
-      ctx.beginPath();
-      ctx.moveTo(-8, -12);
-      ctx.lineTo(19, -30);
-      ctx.lineTo(46, -12);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#fff9eb';
-      ctx.beginPath();
-      ctx.roundRect(12, -3, 13, 14, 1.5);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.restore();
-    }
-
-    function drawMiniTractor(hx, hy) {
-      ctx.save();
-      ctx.translate(hx + HA_PX - 70, hy + HA_PX - 54);
-
-      ctx.fillStyle = 'rgba(20, 15, 8, 0.28)';
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 19, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#d93829';
-      ctx.strokeStyle = '#59140e';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.roundRect(-12, -8, 22, 12, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#2b2d30';
-      ctx.strokeStyle = '#111';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(-7, 4, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(9, 5.5, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.restore();
-    }
-
-    function drawAnimalSprite(animal) {
+    function drawAnimalSprite3D(animal) {
       const isSmall = animal.type === 'ovelha' || animal.type === 'porco' || animal.type === 'galinha' || (animal.ageMonths || 0) < 8 || animal.arrobas < 5;
+      ctx.save();
       if (isSmall) {
-        ctx.scale(animal.type === 'galinha' ? 0.62 : 0.78, animal.type === 'galinha' ? 0.62 : 0.78);
+        ctx.scale(animal.type === 'galinha' ? 0.65 : 0.82, animal.type === 'galinha' ? 0.65 : 0.82);
       }
 
-      ctx.fillStyle = 'rgba(18, 13, 6, 0.30)';
+      // Sombra suave no relvado
+      ctx.fillStyle = 'rgba(20, 32, 8, 0.34)';
       ctx.beginPath();
-      ctx.ellipse(0, 8.8, 13.5, 4.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 10, 15, 5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = '#261408';
-      ctx.lineWidth = 2.1;
+      // Patas
+      ctx.strokeStyle = '#29170a';
+      ctx.lineWidth = 2.4;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-7, 5); ctx.lineTo(-7, 9.8);
-      ctx.moveTo(-2, 5); ctx.lineTo(-2, 9.8);
-      ctx.moveTo(5, 5); ctx.lineTo(5, 9.8);
-      ctx.moveTo(9, 5); ctx.lineTo(9, 9.8);
+      ctx.moveTo(-7, 5); ctx.lineTo(-7, 11);
+      ctx.moveTo(-2, 5); ctx.lineTo(-2, 11);
+      ctx.moveTo(5, 5); ctx.lineTo(5, 11);
+      ctx.moveTo(9, 5); ctx.lineTo(9, 11);
       ctx.stroke();
 
       if (animal.type === 'ovelha') {
-        ctx.fillStyle = '#faf7f0';
-      } else if (animal.type === 'porco') {
-        ctx.fillStyle = '#f7a8c0';
-      } else if (animal.type === 'galinha') {
-        ctx.fillStyle = '#fff9e6';
-      } else if (animal.type === 'vaca') {
-        ctx.fillStyle = '#fcfaf4';
+        // Lã fofa com nuvens 3D
+        const puffs = [[-8, -2, 6.5], [-2, -5, 7], [5, -4, 6.8], [8, 1, 6], [0, 2, 7.2], [-7, 2, 6]];
+        ctx.fillStyle = '#f8f5ec';
+        ctx.strokeStyle = '#4a3d31';
+        ctx.lineWidth = 1.6;
+        puffs.forEach(([px, py, pr]) => {
+          ctx.beginPath();
+          ctx.arc(px, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+        // Cabeça escura da ovelha
+        ctx.fillStyle = '#4a3c31';
+        ctx.beginPath();
+        ctx.arc(13, -1, 5.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
       } else {
-        ctx.fillStyle = '#9c5329';
-      }
-      ctx.strokeStyle = '#261408';
-      ctx.lineWidth = 1.65;
-      ctx.beginPath();
-      ctx.roundRect(-12, -7.5, 24, 14, 5.5);
-      ctx.fill();
-      ctx.stroke();
-
-      if (animal.type === 'vaca') {
-        ctx.fillStyle = '#211e1b';
+        // Corpo arredondado 3D (Vaca / Boi / Porco / Galinha)
+        const bodyGrad = ctx.createLinearGradient(0, -9, 0, 8);
+        if (animal.type === 'vaca') {
+          bodyGrad.addColorStop(0, '#ffffff');
+          bodyGrad.addColorStop(1, '#e6dfd3');
+        } else if (animal.type === 'porco') {
+          bodyGrad.addColorStop(0, '#ffb8ce');
+          bodyGrad.addColorStop(1, '#e07b9b');
+        } else if (animal.type === 'galinha') {
+          bodyGrad.addColorStop(0, '#fffbeb');
+          bodyGrad.addColorStop(1, '#e8dcb5');
+        } else {
+          bodyGrad.addColorStop(0, '#b56333');
+          bodyGrad.addColorStop(1, '#753816');
+        }
+        ctx.fillStyle = bodyGrad;
+        ctx.strokeStyle = '#29170a';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.ellipse(-4, -2, 4.3, 2.9, -0.2, 0, Math.PI * 2);
-        ctx.ellipse(4.5, 2.5, 3.7, 2.3, 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (animal.type === 'ovelha') {
-        ctx.strokeStyle = '#d4ccb8';
-        ctx.lineWidth = 1.25;
-        ctx.beginPath();
-        ctx.arc(-4, 0, 3.5, 0, Math.PI * 1.4);
-        ctx.arc(4, 0, 3.5, 0, Math.PI * 1.4);
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = animal.type === 'galinha' ? '#fff4d4' : (animal.type === 'porco' ? '#eb86a4' : (animal.type === 'vaca' || animal.type === 'ovelha' ? '#f2ece1' : '#783c1a'));
-      ctx.beginPath();
-      ctx.arc(13, -2.5, 5.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      if (animal.type !== 'galinha') {
-        ctx.fillStyle = animal.type === 'porco' ? '#db6b8c' : '#261408';
-        ctx.beginPath();
-        ctx.ellipse(11.5, -7.2, 2.2, 1.3, -0.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if (animal.type === 'galinha') {
-        ctx.fillStyle = '#de3526';
-        ctx.beginPath();
-        ctx.arc(13, -8, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#f7bc28';
-        ctx.beginPath();
-        ctx.moveTo(18, -3); ctx.lineTo(21.8, -2); ctx.lineTo(18, -1);
-        ctx.closePath();
-        ctx.fill();
-      } else if (animal.type === 'porco') {
-        ctx.fillStyle = '#fab9cc';
-        ctx.beginPath();
-        ctx.ellipse(17.5, -2, 2.3, 2.9, 0, 0, Math.PI * 2);
+        ctx.roundRect(-13, -8.5, 26, 15.5, 7);
         ctx.fill();
         ctx.stroke();
+
+        if (animal.type === 'vaca') {
+          ctx.fillStyle = '#26211d';
+          ctx.beginPath();
+          ctx.ellipse(-5, -2.5, 4.8, 3.2, -0.2, 0, Math.PI * 2);
+          ctx.ellipse(4.5, 2.5, 4.2, 2.6, 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Cabeça
+        ctx.fillStyle = animal.type === 'vaca' ? '#fcfaf5' : (animal.type === 'porco' ? '#f79ab7' : '#8c441c');
+        ctx.beginPath();
+        ctx.arc(14, -2.5, 5.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        if (animal.type === 'vaca') {
+          ctx.fillStyle = '#f7b2c4';
+          ctx.beginPath();
+          ctx.ellipse(17.5, -1, 3.2, 2.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
-      ctx.fillStyle = '#120a04';
+      ctx.fillStyle = '#140c05';
       ctx.beginPath();
-      ctx.arc(14.5, -3.5, 1.35, 0, Math.PI * 2);
+      ctx.arc(14.5, -3.5, 1.4, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.restore();
     }
 
     function renderWorld() {
@@ -2957,7 +3089,7 @@
       const w = rect.width;
       const h = rect.height;
 
-      ctx.fillStyle = '#4f912a';
+      ctx.fillStyle = '#5ca32e';
       ctx.fillRect(0, 0, w, h);
 
       ctx.save();
@@ -2981,10 +3113,9 @@
           const fac = getHectareFacilityType(ha);
 
           if (!ha.owned && !isContract) {
-            drawRawGrassTile(x, y, TILE_PX, tx, ty, false);
+            ctx.drawImage(SPRITE_ATLAS.grassUnowned, x, y, TILE_PX, TILE_PX);
           } else if (ha.owned && fac === 'pasture') {
-            ctx.fillStyle = (tx + ty) % 2 === 0 ? '#89cf4c' : '#7ec442';
-            ctx.fillRect(x, y, TILE_PX, TILE_PX);
+            ctx.drawImage(SPRITE_ATLAS.grassOwned, x, y, TILE_PX, TILE_PX);
           } else if (ha.owned && fac === 'coop') {
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#d8b679' : '#c9a667';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
@@ -2992,22 +3123,18 @@
             ctx.fillStyle = (tx + ty) % 2 === 0 ? '#ad8560' : '#9e7652';
             ctx.fillRect(x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'raw') {
-            drawRawGrassTile(x, y, TILE_PX, tx, ty, true);
+            ctx.drawImage(SPRITE_ATLAS.grassOwned, x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'plowed') {
-            drawPlowedSoilTile(x, y, TILE_PX, tx, ty, false);
+            ctx.drawImage(SPRITE_ATLAS.soilPlowed, x, y, TILE_PX, TILE_PX);
           } else if (tile.state === 'planted') {
             const crop = CROPS[tile.cropId] || CROPS.soja;
-            drawPlowedSoilTile(x, y, TILE_PX, tx, ty, true);
-            if (TILE_PX * zoom >= 12) {
-              drawCropWithLevelBar(x, y, TILE_PX, crop, tile.growthMonths, tile.cared);
-            } else {
-              ctx.fillStyle = tile.growthMonths >= crop.monthsToGrow ? '#47d938' : crop.color;
-              ctx.fillRect(x + 4, y + 4, TILE_PX - 8, TILE_PX - 8);
-            }
+            ctx.drawImage(SPRITE_ATLAS.soilPlanted, x, y, TILE_PX, TILE_PX);
+            drawCrop3D(x, y, TILE_PX, crop, tile.growthMonths, tile.cared);
           }
         }
       }
 
+      // Trilhas de terra orgânicas entre os hectares
       ctx.save();
       for (let hr = 0; hr < HA_ROWS; hr++) {
         for (let hc = 0; hc < HA_COLS; hc++) {
@@ -3016,20 +3143,35 @@
           const ha = state.hectares[hr * HA_COLS + hc];
           const nearOwned = ha.owned || isContractHectare(ha.id);
 
-          ctx.strokeStyle = nearOwned ? '#d8a66a' : '#b88b56';
-          ctx.lineWidth = 14;
           ctx.lineCap = 'round';
-
           if (hc < HA_COLS - 1) {
+            ctx.strokeStyle = nearOwned ? '#8f6234' : '#73502b';
+            ctx.lineWidth = 22;
             ctx.beginPath();
-            ctx.moveTo(hx + HA_PX - 8, hy + HA_PX * 0.5);
-            ctx.lineTo(hx + HA_PX + 8, hy + HA_PX * 0.5);
+            ctx.moveTo(hx + HA_PX - 10, hy + HA_PX * 0.5);
+            ctx.lineTo(hx + HA_PX + 10, hy + HA_PX * 0.5);
+            ctx.stroke();
+
+            ctx.strokeStyle = nearOwned ? '#deb076' : '#ba9160';
+            ctx.lineWidth = 16;
+            ctx.beginPath();
+            ctx.moveTo(hx + HA_PX - 10, hy + HA_PX * 0.5);
+            ctx.lineTo(hx + HA_PX + 10, hy + HA_PX * 0.5);
             ctx.stroke();
           }
           if (hr < HA_ROWS - 1) {
+            ctx.strokeStyle = nearOwned ? '#8f6234' : '#73502b';
+            ctx.lineWidth = 22;
             ctx.beginPath();
-            ctx.moveTo(hx + HA_PX * 0.5, hy + HA_PX - 8);
-            ctx.lineTo(hx + HA_PX * 0.5, hy + HA_PX + 8);
+            ctx.moveTo(hx + HA_PX * 0.5, hy + HA_PX - 10);
+            ctx.lineTo(hx + HA_PX * 0.5, hy + HA_PX + 10);
+            ctx.stroke();
+
+            ctx.strokeStyle = nearOwned ? '#deb076' : '#ba9160';
+            ctx.lineWidth = 16;
+            ctx.beginPath();
+            ctx.moveTo(hx + HA_PX * 0.5, hy + HA_PX - 10);
+            ctx.lineTo(hx + HA_PX * 0.5, hy + HA_PX + 10);
             ctx.stroke();
           }
         }
@@ -3042,9 +3184,9 @@
           if (tx < minTx || tx > maxTx || ty < minTy || ty > maxTy) return;
           const x = tx * TILE_PX;
           const y = ty * TILE_PX;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.24)';
           ctx.fillRect(x, y, TILE_PX, TILE_PX);
-          ctx.strokeStyle = 'rgba(224, 242, 254, 0.78)';
+          ctx.strokeStyle = 'rgba(224, 242, 254, 0.8)';
           ctx.lineWidth = 1.5 / zoom;
           ctx.strokeRect(x + 1 / zoom, y + 1 / zoom, TILE_PX - 2 / zoom, TILE_PX - 2 / zoom);
         });
@@ -3054,7 +3196,7 @@
         const [tx, ty] = key.split(',').map(Number);
         const x = tx * TILE_PX;
         const y = ty * TILE_PX;
-        ctx.fillStyle = 'rgba(255, 232, 102, 0.32)';
+        ctx.fillStyle = 'rgba(255, 232, 102, 0.34)';
         ctx.fillRect(x, y, TILE_PX, TILE_PX);
         ctx.strokeStyle = '#fff275';
         ctx.lineWidth = 2 / zoom;
@@ -3075,7 +3217,7 @@
               ctx.fillStyle = 'rgba(138, 102, 54, 0.58)';
               ctx.fillRect(hx, hy, HA_PX, HA_PX);
             } else if (gLvl < 55) {
-              ctx.fillStyle = 'rgba(166, 138, 62, 0.30)';
+              ctx.fillStyle = 'rgba(166, 138, 62, 0.28)';
               ctx.fillRect(hx, hy, HA_PX, HA_PX);
             }
 
@@ -3096,20 +3238,8 @@
             if (!rightNeighbor) drawWoodenFenceSegment(hx + HA_PX - 8, hy + 8, hx + HA_PX - 8, hy + HA_PX - 8);
 
             if (HA_PX * zoom >= 52) {
-              drawBarnAndSilo(hx, hy);
-              drawMiniTractor(hx, hy);
-
-              const statusTxt = ha.pastureDegraded
-                ? `🍂 REBROTA ${ha.restMonths || 0}/3m`
-                : (ha.pastureActive !== false ? `🐄 PASTO ${Math.round(gLvl)}%` : `🌿 DESCANSO ${Math.round(gLvl)}%`);
-              ctx.fillStyle = ha.pastureDegraded ? 'rgba(122, 39, 28, 0.9)' : 'rgba(58, 34, 14, 0.88)';
-              ctx.beginPath();
-              ctx.roundRect(hx + 12, hy + 12, 120, 20, 6);
-              ctx.fill();
-              ctx.fillStyle = '#fff8e7';
-              ctx.font = 'bold 10px system-ui, sans-serif';
-              ctx.textAlign = 'left';
-              ctx.fillText(statusTxt, hx + 17, hy + 25);
+              ctx.drawImage(SPRITE_ATLAS.barn, hx + 16, hy + 8, 178, 115);
+              ctx.drawImage(SPRITE_ATLAS.tractor, hx + HA_PX - 92, hy + HA_PX - 76, 76, 60);
             }
           } else if (ha.owned && (fac === 'coop' || fac === 'sty')) {
             drawWoodenFenceSegment(hx + 8, hy + 8, hx + HA_PX - 8, hy + 8);
@@ -3119,14 +3249,14 @@
 
             if (HA_PX * zoom >= 52) {
               const label = fac === 'coop' ? '🐔 GALINHEIRO' : '🐷 CHIQUEIRO';
-              ctx.fillStyle = fac === 'coop' ? 'rgba(146, 64, 14, 0.9)' : 'rgba(124, 45, 18, 0.9)';
+              ctx.fillStyle = fac === 'coop' ? 'rgba(146, 64, 14, 0.92)' : 'rgba(124, 45, 18, 0.92)';
               ctx.beginPath();
-              ctx.roundRect(hx + 12, hy + 12, 118, 20, 6);
+              ctx.roundRect(hx + 12, hy + 12, 118, 22, 6);
               ctx.fill();
               ctx.fillStyle = '#fff8e7';
               ctx.font = 'bold 10px system-ui, sans-serif';
               ctx.textAlign = 'left';
-              ctx.fillText(label, hx + 17, hy + 25);
+              ctx.fillText(label, hx + 17, hy + 26);
             }
           } else if (isContract) {
             ctx.strokeStyle = '#38bdf8';
@@ -3151,36 +3281,39 @@
           }
 
           if (!ha.owned && !isContract && HA_PX * zoom >= 42) {
-            const boxW = Math.min(HA_PX - 24, 128);
-            const boxH = 44;
+            const boxW = Math.min(HA_PX - 26, 136);
+            const boxH = 46;
             const bx = hx + (HA_PX - boxW) / 2;
             const by = hy + (HA_PX - boxH) / 2;
 
-            ctx.fillStyle = 'rgba(20, 12, 5, 0.25)';
+            ctx.fillStyle = 'rgba(20, 12, 5, 0.32)';
             ctx.beginPath();
             ctx.roundRect(bx, by + 4, boxW, boxH, 9);
             ctx.fill();
 
-            ctx.fillStyle = '#6e4522';
+            const signGrad = ctx.createLinearGradient(bx, by, bx, by + boxH);
+            signGrad.addColorStop(0, '#7c4e26');
+            signGrad.addColorStop(1, '#573314');
+            ctx.fillStyle = signGrad;
             ctx.beginPath();
             ctx.roundRect(bx, by, boxW, boxH, 9);
             ctx.fill();
-            ctx.strokeStyle = '#3a210c';
-            ctx.lineWidth = 2.2;
+            ctx.strokeStyle = '#361d09';
+            ctx.lineWidth = 2.4;
             ctx.stroke();
 
             ctx.fillStyle = '#fff9eb';
             ctx.font = 'bold 11.5px system-ui, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`HA ${hc + 1},${hr + 1} À VENDA`, hx + HA_PX / 2, by + 18);
+            ctx.fillText(`HA ${hc + 1},${hr + 1} À VENDA`, hx + HA_PX / 2, by + 19);
             ctx.fillStyle = '#b9f5a6';
             ctx.font = 'bold 11px system-ui, sans-serif';
-            ctx.fillText(`R$ ${(ha.price / 1000).toFixed(0)} mil`, hx + HA_PX / 2, by + 35);
+            ctx.fillText(`R$ ${(ha.price / 1000).toFixed(0)} mil`, hx + HA_PX / 2, by + 36);
           }
 
-          if (!ha.owned && HA_PX * zoom >= 56 && (hc === 0 || hc === HA_COLS - 1 || hr === 0 || hr === HA_ROWS - 1)) {
-            drawTreeCluster(hx + 22, hy + 24, 0.85);
-            drawTreeCluster(hx + HA_PX - 22, hy + HA_PX - 22, 0.85);
+          if (!ha.owned && HA_PX * zoom >= 56 && (hc === 0 || hc === HA_COLS - 1 || hr === 0 || hr === HA_ROWS - 1 || (hc === 2 && hr === 4) || (hc === 6 && hr === 3))) {
+            ctx.drawImage(SPRITE_ATLAS.tree, hx + 6, hy + 6, 62, 66);
+            ctx.drawImage(SPRITE_ATLAS.tree, hx + HA_PX - 68, hy + HA_PX - 70, 62, 66);
           }
         }
       }
@@ -3204,12 +3337,12 @@
           const slot = Math.floor(idx / targetHectares.length);
           const colSlot = (slot % 3);
           const rowSlot = Math.floor(slot / 3) % 3;
-          const ax = pHa.hc * HA_PX + 128 + colSlot * 48;
-          const ay = pHa.hr * HA_PX + 114 + rowSlot * 48;
+          const ax = pHa.hc * HA_PX + 74 + colSlot * 74;
+          const ay = pHa.hr * HA_PX + 132 + rowSlot * 52;
 
           ctx.save();
           ctx.translate(ax, ay);
-          drawAnimalSprite(animal);
+          drawAnimalSprite3D(animal);
           ctx.restore();
         });
       }
