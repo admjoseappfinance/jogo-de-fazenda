@@ -728,9 +728,9 @@
         </div>
 
         <div class="top-controls-right">
-          <button class="cream-btn" id="btnSeasonStep" onclick="stepCalendarMonth()" title="Trocar mês de safra/venda (manual)">
-            📅 <span id="hudSeasonLabel">Out · Safra</span>
-          </button>
+          <div class="cream-btn" style="cursor:default;" title="Mês atual">
+            📅 <span id="hudSeasonLabel">Nov · Verão</span>
+          </div>
           <button class="cream-btn" id="btnSoundToggle" onclick="toggleSound()" title="Ligar ou desligar sons do jogo">
             🔊 Som: ON
           </button>
@@ -1117,23 +1117,8 @@
     ];
 
     function getCurrentMonthObj() {
-      const m = Number(state?.calendarMonth || 10);
-      return MONTHS.find(x => x.idx === m) || MONTHS[9];
-    }
-
-    function stepCalendarMonth() {
-      const cur = Number(state.calendarMonth || 10);
-      const next = (cur % 12) + 1;
-      state.calendarMonth = next;
-      const mObj = getCurrentMonthObj();
-      playSfx('click');
-      updateHUD();
-      setTool(currentTool);
-      if (selectedTileKeys.size > 0 && currentTool !== 'harvest') {
-        prepareAreaActionConfirmation();
-      }
-      autoSaveGame();
-      showToast(`📅 Mês alterado para ${mObj.name} (${mObj.season})`);
+      const m = Number(state?.calendarMonth || (new Date().getMonth() + 1));
+      return MONTHS.find(x => x.idx === m) || MONTHS[10];
     }
 
     function computeTaskDurationSeconds(taskType, areaHa) {
@@ -1604,7 +1589,7 @@
 
     const CROP_LIST = Object.values(CROPS);
 
-    function getYieldSeasonMultiplier(crop, monthIdx = state?.calendarMonth || 10) {
+    function getYieldSeasonMultiplier(crop, monthIdx = state?.calendarMonth || (new Date().getMonth() + 1)) {
       if (!crop || !Array.isArray(crop.plantMonths)) return 1.0;
       if (crop.plantMonths.includes(monthIdx)) return 1.18;
       const prevM = ((monthIdx - 2 + 12) % 12) + 1;
@@ -1613,7 +1598,7 @@
       return 0.78;
     }
 
-    function getSellSeasonMultiplier(crop, monthIdx = state?.calendarMonth || 10) {
+    function getSellSeasonMultiplier(crop, monthIdx = state?.calendarMonth || (new Date().getMonth() + 1)) {
       if (!crop || !Array.isArray(crop.bestSellMonths)) return 1.0;
       if (crop.bestSellMonths.includes(monthIdx)) return 1.22;
       const prevM = ((monthIdx - 2 + 12) % 12) + 1;
@@ -1622,7 +1607,7 @@
       return 0.86;
     }
 
-    function getEffectiveSellPricePerSack(crop, monthIdx = state?.calendarMonth || 10) {
+    function getEffectiveSellPricePerSack(crop, monthIdx = state?.calendarMonth || (new Date().getMonth() + 1)) {
       return Math.round(crop.pricePerSack * getSellSeasonMultiplier(crop, monthIdx));
     }
 
@@ -1703,7 +1688,7 @@
       return Math.max(25000, Math.min(180000, Math.round(equity * 0.45)));
     }
 
-    function getPlantAreaEconomics(crop, areaHa, withCare = false, modeId = state.transportMode, monthIdx = state?.calendarMonth || 10) {
+    function getPlantAreaEconomics(crop, areaHa, withCare = false, modeId = state.transportMode, monthIdx = state?.calendarMonth || (new Date().getMonth() + 1)) {
       const plantCost = Math.round(areaHa * crop.plantCostHa);
       const plowCost = Math.round(areaHa * getPlowCostHa());
       const careCost = withCare ? Math.round(areaHa * getCareCostHa()) : 0;
@@ -1919,7 +1904,7 @@
           const isPlanted = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6) && !(lx >= 3 && lx <= 6 && ly === 3);
           const isPlowed = (lx >= 1 && lx <= 6) && (ly >= 1 && ly <= 6);
           if (isPlanted) {
-            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, lastCropId: null, monocultureCount: 0, plantedMonth: 10 };
+            return { state: 'planted', cropId: 'milho', ripe: true, cared: true, lastCropId: null, monocultureCount: 0, plantedMonth: 11 };
           }
           if (isPlowed) {
             return { state: 'plowed', cropId: null, ripe: false, cared: false, lastCropId: null, monocultureCount: 0, plantedMonth: null };
@@ -1930,7 +1915,7 @@
 
       return {
         money: INITIAL_CASH,
-        calendarMonth: 10,
+        calendarMonth: new Date().getMonth() + 1,
         lastSavedAt: null,
         transportMode: 'camionete',
         ownedMachines: [],
@@ -1963,7 +1948,7 @@
       if (!Array.isArray(merged.loans)) merged.loans = [];
       if (!Array.isArray(merged.ownedMachines)) merged.ownedMachines = [];
       if (!Array.isArray(merged.leasedMachines)) merged.leasedMachines = [];
-      if (!merged.calendarMonth) merged.calendarMonth = 10;
+      if (!merged.calendarMonth) merged.calendarMonth = new Date().getMonth() + 1;
       if (typeof merged.woolKg !== 'number') merged.woolKg = 0;
       if (typeof merged.eggsDozens !== 'number') merged.eggsDozens = 0;
       if (Array.isArray(merged.hectares)) {
@@ -2722,7 +2707,7 @@
         id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         type: act.type,
         cropId: act.cropId || null,
-        monthIdx: Number(state.calendarMonth || 10),
+        monthIdx: Number(state.calendarMonth || (new Date().getMonth() + 1)),
         tileKeys: freeCoords.map(([tx, ty]) => `${tx},${ty}`),
         totalSeconds: durationSec,
         remainingSeconds: durationSec,
@@ -2741,7 +2726,7 @@
 
     function finalizeCompletedTask(task) {
       const coords = (task.tileKeys || []).map(k => k.split(',').map(Number));
-      const taskMonth = Number(task.monthIdx || state.calendarMonth || 10);
+      const taskMonth = Number(task.monthIdx || state.calendarMonth || (new Date().getMonth() + 1));
 
       if (task.type === 'plow') {
         coords.forEach(([tx, ty]) => {
@@ -2946,7 +2931,7 @@
         id: `task_harvest_${Date.now()}`,
         type: 'harvest',
         cropId: null,
-        monthIdx: Number(state.calendarMonth || 10),
+        monthIdx: Number(state.calendarMonth || (new Date().getMonth() + 1)),
         tileKeys: ripeTiles.map(({ tx, ty }) => `${tx},${ty}`),
         totalSeconds: durationSec,
         remainingSeconds: durationSec,
@@ -3603,7 +3588,7 @@
         title.textContent = '❓ Como Jogar · Safra Real (RS)';
         body.innerHTML = `
           <p><strong>1. Terra & Caixa (RS):</strong> Hectares custam entre <strong>R$ 68 mil e R$ 118 mil</strong> (padrão RS) e o caixa inicial é <strong>${formatBRL(INITIAL_CASH)}</strong>. Arar custa <strong>${formatBRL(getPlowCostHa())}/ha</strong> (6 min/ha), Cuidar <strong>${formatBRL(getCareCostHa())}/ha</strong> (10 min/ha) e Colher <strong>${formatBRL(getHarvestCostHa())}/ha</strong> (8 min/ha).</p>
-          <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender no mês/janela ideal da cultura paga <strong>+22% por saca</strong>. Use o botão <strong>📅</strong> no topo para testar épocas.</p>
+          <p><strong>2. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender na janela ideal paga <strong>+22% por saca</strong>.</p>
           <p><strong>3. Save Automático & App Instalável:</strong> Seu progresso salva sozinho a cada ação e pode ser exportado em arquivo <strong>.json</strong> ou instalado na tela inicial do celular pelo menu <strong>💾 App</strong>.</p>
           <p><strong>4. Contratos Vizinhos:</strong> Aceite serviços em talhões vizinhos em <strong>💾 App</strong> para reforçar o caixa.</p>
         `;
