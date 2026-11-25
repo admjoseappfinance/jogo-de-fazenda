@@ -1296,10 +1296,13 @@
         buyPrice: 3600,
         startArrobas: 8.5,
         maxArrobas: 21.0,
+        gainArrobasMonth: 1.1,
         silageKgPerMonth: 180,
         milkLitersMonth: 0,
         woolKgMonth: 0,
         eggsDozensMonth: 0,
+        reproMonths: 0,
+        reproChance: 0,
         minButcherArrobas: 15.0,
         freightBase: 110,
         freightOwn: 25
@@ -1315,10 +1318,15 @@
         buyPrice: 6200,
         startArrobas: 14.0,
         maxArrobas: 18.0,
+        gainArrobasMonth: 0.35,
         silageKgPerMonth: 220,
         milkLitersMonth: 480,
         woolKgMonth: 0,
         eggsDozensMonth: 0,
+        reproMonths: 3,
+        reproChance: 0.45,
+        offspringType: 'boi',
+        offspringArrobas: 6.5,
         minButcherArrobas: 14.0,
         freightBase: 110,
         freightOwn: 25
@@ -1334,10 +1342,15 @@
         buyPrice: 950,
         startArrobas: 2.5,
         maxArrobas: 4.5,
+        gainArrobasMonth: 0.25,
         silageKgPerMonth: 35,
         milkLitersMonth: 0,
         woolKgMonth: 0.5,
         eggsDozensMonth: 0,
+        reproMonths: 2,
+        reproChance: 0.55,
+        offspringType: 'ovelha',
+        offspringArrobas: 1.5,
         minButcherArrobas: 3.0,
         freightBase: 30,
         freightOwn: 8
@@ -1353,10 +1366,15 @@
         buyPrice: 1150,
         startArrobas: 3.2,
         maxArrobas: 7.5,
+        gainArrobasMonth: 0.65,
         silageKgPerMonth: 0,
         milkLitersMonth: 0,
         woolKgMonth: 0,
         eggsDozensMonth: 0,
+        reproMonths: 2,
+        reproChance: 0.60,
+        offspringType: 'porco',
+        offspringArrobas: 1.8,
         minButcherArrobas: 5.0,
         freightBase: 35,
         freightOwn: 10
@@ -1372,10 +1390,15 @@
         buyPrice: 95,
         startArrobas: 0.18,
         maxArrobas: 0.35,
+        gainArrobasMonth: 0.02,
         silageKgPerMonth: 0,
         milkLitersMonth: 0,
         woolKgMonth: 0,
         eggsDozensMonth: 2.5,
+        reproMonths: 2,
+        reproChance: 0.65,
+        offspringType: 'galinha',
+        offspringArrobas: 0.12,
         minButcherArrobas: 0.20,
         freightBase: 6,
         freightOwn: 2
@@ -1879,6 +1902,117 @@
       }
     }
 
+    function canSpawnOffspring(spec, currentCattleList) {
+      if (!spec || !spec.reproMonths || spec.reproChance <= 0) return false;
+      if (spec.facilityType === 'coop') {
+        const cap = getCoopCapacity();
+        const cur = currentCattleList.filter(a => a.type === 'galinha').length;
+        return cur < cap;
+      }
+      if (spec.facilityType === 'sty') {
+        const cap = getStyCapacity();
+        const cur = currentCattleList.filter(a => a.type === 'porco').length;
+        return cur < cap;
+      }
+      const paddocks = getPasturePaddocks();
+      if (paddocks.length === 0) return false;
+      const totalPastureHa = state.hectares.filter(h => h.owned && getHectareFacilityType(h) === 'pasture').length;
+      const maxUA = totalPastureHa * UA_CAPACITY_PER_HA * ((state.silageKg || 0) >= 300 ? 1.8 : 1.0);
+      const offType = spec.offspringType || spec.type;
+      const offSpec = LIVESTOCK_TYPES[offType] || spec;
+      const offArrobas = spec.offspringArrobas || offSpec.startArrobas;
+      const offUA = Math.max(0.05, +(offSpec.uaWeight * Math.max(0.5, offArrobas / (offSpec.startArrobas || 5))).toFixed(2));
+      const curUA = currentCattleList
+        .filter(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture')
+        .reduce((s, a) => s + getAnimalUA(a), 0);
+      return (curUA + offUA) <= (maxUA + 0.05);
+    }
+
+    function advanceLivestockMonths(mCount) {
+      if (!Array.isArray(state.cattle) || state.cattle.length === 0) return { births: 0, milkAdded: 0, woolAdded: 0, eggsAdded: 0 };
+
+      let births = 0;
+      let milkAdded = 0;
+      let woolAdded = 0;
+      let eggsAdded = 0;
+
+      const newborns = [];
+
+      for (let m = 0; m < mCount; m++) {
+        // Consome silagem no pasto se houver
+        const grazingCount = state.cattle.filter(a => (LIVESTOCK_TYPES[a.type]?.facilityType || 'pasture') === 'pasture').length;
+        if (grazingCount > 0 && (state.silageKg || 0) > 0) {
+          const silageNeed = grazingCount * 25;
+          state.silageKg = Math.max(0, +(state.silageKg - silageNeed).toFixed(1));
+        }
+
+        for (let i = 0; i < state.cattle.length; i++) {
+          const animal = state.cattle[i];
+          const spec = LIVESTOCK_TYPES[animal.type];
+          if (!spec) continue;
+
+          // Alimentação de grãos no silo para animais que exigem ração
+          let fed = true;
+          if (spec.requiresGrain && spec.grainSacksMonth > 0) {
+            const check = consumeGrainFromSilo(spec.grainSacksMonth);
+            fed = check.ok;
+          }
+
+          // Ganho de peso (arrobas) até o limite máximo
+          const gain = (spec.gainArrobasMonth || 0) * (fed ? 1 : 0.35);
+          if (gain > 0 && typeof spec.maxArrobas === 'number') {
+            animal.arrobas = Math.min(spec.maxArrobas, +((animal.arrobas || spec.startArrobas) + gain).toFixed(2));
+          }
+
+          // Subprodutos mensais (leite, lã, ovos)
+          if (fed) {
+            if (spec.milkLitersMonth > 0) {
+              const addM = spec.milkLitersMonth;
+              state.milkLiters = +((state.milkLiters || 0) + addM).toFixed(1);
+              milkAdded += addM;
+            }
+            if (spec.woolKgMonth > 0) {
+              const addW = spec.woolKgMonth;
+              state.woolKg = +((state.woolKg || 0) + addW).toFixed(2);
+              woolAdded += addW;
+            }
+            if (spec.eggsDozensMonth > 0) {
+              const addE = spec.eggsDozensMonth;
+              state.eggsDozens = +((state.eggsDozens || 0) + addE).toFixed(1);
+              eggsAdded += addE;
+            }
+          }
+
+          // Reprodução periódica
+          if (spec.reproMonths > 0 && spec.reproChance > 0) {
+            animal.reproCounter = (Number(animal.reproCounter) || 0) + 1;
+            if (animal.reproCounter >= spec.reproMonths) {
+              animal.reproCounter = 0;
+              const poolWithNewborns = state.cattle.concat(newborns);
+              if (fed && Math.random() < spec.reproChance && canSpawnOffspring(spec, poolWithNewborns)) {
+                const offType = spec.offspringType || spec.type;
+                const offSpec = LIVESTOCK_TYPES[offType] || spec;
+                const offArrobas = spec.offspringArrobas || offSpec.startArrobas;
+                newborns.push({
+                  id: Date.now() + Math.random(),
+                  type: offType,
+                  arrobas: offArrobas,
+                  reproCounter: 0
+                });
+                births++;
+              }
+            }
+          }
+        }
+
+        if (newborns.length > 0) {
+          state.cattle = state.cattle.concat(newborns.splice(0, newborns.length));
+        }
+      }
+
+      return { births, milkAdded, woolAdded, eggsAdded };
+    }
+
     function advanceCalendarMonths(monthsPassed) {
       if (!monthsPassed || monthsPassed <= 0) return;
       const mCount = Math.floor(monthsPassed);
@@ -1896,6 +2030,16 @@
         if (t.growthMonths >= needed) {
           t.ripe = true;
         }
+      }
+
+      const animalStats = advanceLivestockMonths(mCount);
+      if (animalStats.births > 0 || animalStats.eggsAdded > 0 || animalStats.milkAdded > 0 || animalStats.woolAdded > 0) {
+        const parts = [];
+        if (animalStats.eggsAdded > 0) parts.push(`+${animalStats.eggsAdded.toFixed(1)} dz ovos`);
+        if (animalStats.milkAdded > 0) parts.push(`+${animalStats.milkAdded.toFixed(0)} L leite`);
+        if (animalStats.woolAdded > 0) parts.push(`+${animalStats.woolAdded.toFixed(1)} kg lã`);
+        if (animalStats.births > 0) parts.push(`+${animalStats.births} cria(s)`);
+        showToast(`🐄 Mês ${getCurrentMonthObj().short}: ${parts.join(' · ')}`);
       }
     }
 
@@ -1979,6 +2123,10 @@
       if (typeof merged.monthProgressSeconds !== 'number') merged.monthProgressSeconds = 0;
       if (!Array.isArray(merged.activeTasks)) merged.activeTasks = [];
       if (!Array.isArray(merged.cattle)) merged.cattle = [];
+      merged.cattle = merged.cattle.map(a => ({
+        ...a,
+        reproCounter: typeof a.reproCounter === 'number' ? a.reproCounter : 0
+      }));
       if (!Array.isArray(merged.loans)) merged.loans = [];
       if (!Array.isArray(merged.ownedMachines)) merged.ownedMachines = [];
       if (!Array.isArray(merged.leasedMachines)) merged.leasedMachines = [];
@@ -2917,7 +3065,7 @@
 
       let changed = false;
 
-      // Avança calendário (1 mês = 2 horas = 7200s) e crescimento das plantas
+      // Avança calendário (1 mês = 2 horas = 7200s), plantas e pecuária (subprodutos + reprodução)
       state.monthProgressSeconds = (Number(state.monthProgressSeconds) || 0) + safeElapsed;
       if (state.monthProgressSeconds >= MONTH_SECONDS) {
         const monthsGained = Math.floor(state.monthProgressSeconds / MONTH_SECONDS);
@@ -3683,7 +3831,7 @@
         title.textContent = '❓ Como Jogar · Safra Real (RS)';
         body.innerHTML = `
           <p><strong>1. Tempo & Meses (1 mês = 2h):</strong> Cada mês do calendário dura <strong>2 horas</strong>. Após semear, as culturas crescem mês a mês até atingir seu ciclo (<strong>3 a 4 meses</strong>) antes de ficarem prontas para colher.</p>
-          <p><strong>2. Tempos de Serviço:</strong> Arar <strong>${WORK_SECONDS_PER_HA.plow}s/ha</strong>, Plantar <strong>${WORK_SECONDS_PER_HA.plant}s/ha</strong>, Cuidar <strong>${WORK_SECONDS_PER_HA.care}s/ha</strong> e Colher <strong>${WORK_SECONDS_PER_HA.harvest}s/ha</strong>.</p>
+          <p><strong>2. Pecuária, Subprodutos & Reprodução:</strong> A cada mês, animais alimentados geram subprodutos (<strong>leite</strong>, <strong>lã</strong>, <strong>ovos</strong>), ganham arrobas e podem ter <strong>crias</strong> quando há espaço e alimento.</p>
           <p><strong>3. Sazonalidade de Safra e Venda:</strong> Plantar na janela ideal da cultura dá <strong>+18% de rendimento</strong> (e fora da época dá -22%). Vender na janela ideal paga <strong>+22% por saca</strong>.</p>
           <p><strong>4. Tempo Fora do Jogo & Save:</strong> O tempo dos serviços e dos meses continua contando quando você sai ou minimiza o app, com auto-save e backup <strong>.json</strong> em <strong>💾 App</strong>.</p>
         `;
@@ -3930,7 +4078,7 @@
             <div class="summary-box"><span>Pasto (${totalHerdUA.toFixed(1)}/${activeCapUA.toFixed(1)} UA) · Gal: ${chickenCount}/${coopCap} · Chiq: ${pigCount}/${styCap}</span><strong>${cattleList.length} animais</strong></div>
             <div class="summary-box"><span>Silagem / Leite / Lã / Ovos</span><strong>${(state.silageKg || 0).toFixed(0)} kg · ${(state.milkLiters || 0).toFixed(0)} L · ${(state.woolKg || 0).toFixed(1)} kg · ${(state.eggsDozens || 0).toFixed(1)} dz</strong></div>
           </div>
-          <p class="confirm-sub">Grãos no Silo: <strong>${totalGrainSacks.toFixed(1)} sc</strong>. Você não começa com pasto: converta um hectare próprio em <strong>Pasto</strong>, <strong>Galinheiro</strong> ou <strong>Chiqueiro</strong> para criar animais.</p>
+          <p class="confirm-sub">Grãos no Silo: <strong>${totalGrainSacks.toFixed(1)} sc</strong>. A cada mês (2h), animais alimentados geram leite/lã/ovos, engordam e podem ter crias se houver vaga.</p>
 
           <h4 style="margin:8px 0 6px;">1. Converter Hectare Próprio</h4>
           ${ownedHectares.map(h => {
@@ -4031,11 +4179,17 @@
                 const freight = hasAnimalTruck ? spec.freightOwn : spec.freightBase;
                 const liveVal = Math.max(0, Math.round(a.arrobas * LIVE_CATTLE_PRICE_PER_ARROBA - freight));
                 const butcherVal = Math.max(0, Math.round(a.arrobas * BUTCHER_PRICE_PER_ARROBA - freight));
+                const prodLabel = spec.eggsDozensMonth > 0
+                  ? `${spec.eggsDozensMonth} dz ovos/mês`
+                  : (spec.milkLitersMonth > 0
+                    ? `${spec.milkLitersMonth} L leite/mês`
+                    : (spec.woolKgMonth > 0 ? `${spec.woolKgMonth} kg lã/mês` : 'Engorda'));
+                const reproLabel = spec.reproMonths > 0 ? ` · Cria a cada ${spec.reproMonths}m` : '';
                 return `
                   <div class="machine-card">
                     <div class="machine-info">
                       <strong>#${i + 1} ${spec.shortLabel} — ${a.arrobas.toFixed(2)} @</strong>
-                      <small>${spec.requiresGrain ? `Consome ${spec.grainSacksMonth} sc grãos` : 'Criação a pasto'}</small>
+                      <small>${spec.requiresGrain ? `${spec.grainSacksMonth} sc grãos/mês` : 'A pasto'} · ${prodLabel}${reproLabel}</small>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:4px;">
                       <button class="action-btn secondary" onclick="sellAnimal(${a.id}, 'live')">Vivo (${formatBRL(liveVal)})</button>
@@ -4789,18 +4943,9 @@
       state.cattle.push({
         id: Date.now() + Math.random(),
         type: spec.id,
-        arrobas: spec.startArrobas
+        arrobas: spec.startArrobas,
+        reproCounter: 0
       });
-
-      if (spec.id === 'vaca') {
-        state.milkLiters = (state.milkLiters || 0) + spec.milkLitersMonth;
-      }
-      if (spec.id === 'ovelha') {
-        state.woolKg = +((state.woolKg || 0) + spec.woolKgMonth).toFixed(2);
-      }
-      if (spec.id === 'galinha') {
-        state.eggsDozens = +((state.eggsDozens || 0) + spec.eggsDozensMonth).toFixed(1);
-      }
 
       updateHUD();
       renderWorld();
